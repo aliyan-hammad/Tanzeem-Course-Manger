@@ -202,6 +202,7 @@ def delete_course(id):
 @admin_bp.route('/reports', methods=['GET', 'POST'])
 @login_required
 def reports():
+    from flask import session
     if current_user.role != 'Admin':
         flash('Access denied! Admins permissions required.', 'danger')
         return redirect(url_for('dashboard.index'))
@@ -210,11 +211,23 @@ def reports():
     default_start = date(today.year, today.month, 1).strftime('%Y-%m-%d')
     default_end = today.strftime('%Y-%m-%d')
     
-    start_date_str = request.form.get('start_date') or default_start
-    end_date_str = request.form.get('end_date') or default_end
-    course_id_str = request.form.get('course_id')
-    subject = request.form.get('subject')
-    
+    # Session Persistence
+    if request.method == 'POST' or 'filter_applied' in request.args:
+        start_date_str = request.form.get('start_date') or request.args.get('start_date') or default_start
+        end_date_str = request.form.get('end_date') or request.args.get('end_date') or default_end
+        course_id_str = request.form.get('course_id') or request.args.get('course_id')
+        subject = request.form.get('subject') or request.args.get('subject')
+        
+        session['report_start_date'] = start_date_str
+        session['report_end_date'] = end_date_str
+        session['report_course_id'] = course_id_str
+        session['report_subject'] = subject
+    else:
+        start_date_str = session.get('report_start_date', default_start)
+        end_date_str = session.get('report_end_date', default_end)
+        course_id_str = session.get('report_course_id')
+        subject = session.get('report_subject')
+        
     course_id = int(course_id_str) if (course_id_str and course_id_str.isdigit()) else None
     
     start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
@@ -263,7 +276,7 @@ def reports():
     attendance_stats = {}
     for att in attendances_list:
         if att.student_id not in attendance_stats:
-            calc = calculate_attendance(att.student_id, att.student.course_id)
+            calc = calculate_attendance(att.student_id, att.student.course_id, subject_name=subject, start_date=start_date.date(), end_date=end_date.date())
             attendance_stats[att.student_id] = {'present': 0, 'absent': 0, 'leave': 0, 'student': att.student, 'calc': calc}
         if att.status == 'Present':
             attendance_stats[att.student_id]['present'] += 1

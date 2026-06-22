@@ -166,6 +166,9 @@ def fees():
         registration_id = request.form.get('registration_id')
         amount_paid = float(request.form.get('amount_paid'))
         payment_method = request.form.get('payment_method', 'Cash')
+        fee_month = request.form.get('fee_month')
+        if not fee_month:
+            fee_month = datetime.utcnow().strftime('%Y-%m')
         
         date_collected_str = request.form.get('date_collected')
         if date_collected_str:
@@ -181,11 +184,21 @@ def fees():
         if not student.course_id or not Course.query.filter_by(id=student.course_id, coordinator_id=current_user.id).first():
             flash('Access denied! You do not manage this student.', 'danger')
             return redirect(url_for('coordinator.fees'))
+            
+        existing_fee = FeeCollection.query.filter_by(
+            student_id=student.id, 
+            fee_month=fee_month, 
+            is_deleted=False
+        ).first()
+        if existing_fee:
+            flash(f'Fee for {student.full_name} for the month {fee_month} has already been collected!', 'danger')
+            return redirect(url_for('coordinator.fees'))
                 
         new_fee = FeeCollection(
             student_id=student.id, 
             amount_paid=amount_paid, 
             payment_method=payment_method,
+            fee_month=fee_month,
             date_collected=date_collected,
             collected_by_id=current_user.id
         )

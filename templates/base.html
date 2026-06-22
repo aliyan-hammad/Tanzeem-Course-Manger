@@ -157,11 +157,6 @@
             </li>
             {% endif %}
         </ul>
-        <div class="p-3 border-top border-secondary text-center">
-            <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger w-100">
-                <i class="bi bi-box-arrow-right"></i> Logout
-            </a>
-        </div>
     </nav>
     {% endif %}
 
@@ -174,9 +169,11 @@
                 <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="me-2" style="max-height: 35px;">
                 <h5 class="m-0 text-dark fw-bold">Tanzeem-e-Islami Course Manager</h5>
             </div>
-            <div>
-                <span class="badge bg-secondary me-2">{{ current_user.role }} Panel</span>
+            <div class="d-flex align-items-center gap-2">
                 <span class="badge bg-primary rounded-pill p-2"><i class="bi bi-person-circle"></i> {{ current_user.username }}</span>
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline-danger">
+                    <i class="bi bi-box-arrow-right"></i> Logout
+                </a>
             </div>
         </header>
         {% endif %}

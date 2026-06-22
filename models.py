@@ -51,6 +51,7 @@ class FeeCollection(db.Model):
     student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
     amount_paid = db.Column(db.Float, nullable=False)
     payment_method = db.Column(db.String(20), nullable=False, default='Cash')  # Cash or Online
+    fee_month = db.Column(db.String(7), nullable=True)  # Format: YYYY-MM
     date_collected = db.Column(db.DateTime, default=datetime.utcnow)
     collected_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
 

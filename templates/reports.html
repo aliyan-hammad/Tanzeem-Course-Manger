@@ -24,8 +24,8 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-3">
-                <label for="subject" class="form-label font-weight-bold" style="font-size: 0.85rem;">Subject (Attendance)</label>
+            <div class="col-md-3" id="subject_filter_div">
+                <label for="subject" class="form-label font-weight-bold" style="font-size: 0.85rem;">Subject Filter</label>
                 <select class="form-select" id="subject" name="subject">
                     <option value="" {% if not selected_subject %}selected{% endif %}>All Subjects</option>
                     <option value="Arabic" {% if selected_subject == 'Arabic' %}selected{% endif %}>Arabic</option>
@@ -367,8 +367,45 @@ function exportToPDF(elementId, filename) {
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
     };
     
-    // Save report directly as PDF
+// Save report directly as PDF
     html2pdf().set(opt).from(element).save();
 }
+
+document.addEventListener("DOMContentLoaded", function() {
+    // Restore active tab from sessionStorage
+    var activeTab = sessionStorage.getItem('reportsActiveTab');
+    if (activeTab) {
+        var tabBtn = document.querySelector('button[data-bs-target="' + activeTab + '"]');
+        if (tabBtn) {
+            var tab = new bootstrap.Tab(tabBtn);
+            tab.show();
+        }
+    }
+    
+    // Listen for tab changes
+    var tabElements = document.querySelectorAll('button[data-bs-toggle="tab"]');
+    tabElements.forEach(function(el) {
+        el.addEventListener('shown.bs.tab', function (e) {
+            var target = e.target.getAttribute('data-bs-target');
+            sessionStorage.setItem('reportsActiveTab', target);
+            toggleSubjectFilter(target);
+        });
+    });
+    
+    function toggleSubjectFilter(targetId) {
+        var subjectDiv = document.getElementById('subject_filter_div');
+        if (subjectDiv) {
+            if (targetId === '#attendance') {
+                subjectDiv.style.display = 'block';
+            } else {
+                subjectDiv.style.display = 'none';
+            }
+        }
+    }
+    
+    // Initial toggle
+    var currentTab = sessionStorage.getItem('reportsActiveTab') || '#students';
+    toggleSubjectFilter(currentTab);
+});
 </script>
 {% endblock %}

@@ -198,6 +198,13 @@
                             <label for="profession" class="form-label">Profession</label>
                             <input type="text" class="form-control" id="profession" name="profession" placeholder="e.g. Student, Job, Teacher">
                         </div>
+                        {% if selected_course_id and selected_course_id != 'all' %}
+                        <div class="col-md-6">
+                            <label class="form-label">Enroll in Course</label>
+                            <input type="hidden" name="course_id" value="{{ selected_course_id }}">
+                            <input type="text" class="form-control bg-light" value="{% for c in courses %}{% if c.id|string == selected_course_id|string %}{{ c.name }}{% endif %}{% endfor %}" readonly>
+                        </div>
+                        {% else %}
                         <div class="col-md-6">
                             <label for="course_id" class="form-label">Enroll in Course</label>
                             <select class="form-select" id="course_id" name="course_id">
@@ -207,6 +214,7 @@
                                 {% endfor %}
                             </select>
                         </div>
+                        {% endif %}
                         <div class="col-md-6">
                             <label for="enrollment_date" class="form-label">Enrollment Date</label>
                             <input type="date" class="form-control" id="enrollment_date" name="enrollment_date">

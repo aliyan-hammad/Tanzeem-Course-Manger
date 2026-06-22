@@ -6,27 +6,34 @@
     <span class="badge bg-secondary p-2"><i class="bi bi-person-circle"></i> {{ current_user.full_name if current_user.full_name else current_user.username }} ({{ current_user.role }})</span>
 </div>
 
-<!-- Course Filter for Admin -->
-{% if current_user.role == 'Admin' %}
-<div class="card shadow-sm border-0 mb-4">
+<!-- Dashboard Filters -->
+<div class="card shadow-sm border-0 mb-4 bg-light">
     <div class="card-body">
         <form method="GET" action="{{ url_for('dashboard.index') }}" class="row g-3 align-items-end">
-            <div class="col-md-8">
-                <label for="course_id" class="form-label fw-bold">Select Course to Filter Dashboard</label>
+            <input type="hidden" name="filter_applied" value="1">
+            <div class="col-md-4">
+                <label for="course_id" class="form-label fw-bold text-secondary">Course</label>
                 <select class="form-select" id="course_id" name="course_id">
-                    <option value="" {% if not selected_course_id %}selected{% endif %}>Overall Summary (All Courses)</option>
+                    <option value="" {% if not selected_course_id %}selected{% endif %}>All Courses</option>
                     {% for course in courses %}
                     <option value="{{ course.id }}" {% if selected_course_id|string == course.id|string %}selected{% endif %}>{{ course.name }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-4">
-                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-funnel"></i> Apply Filter</button>
+            <div class="col-md-3">
+                <label for="start_date" class="form-label fw-bold text-secondary">Start Date</label>
+                <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date_str }}">
+            </div>
+            <div class="col-md-3">
+                <label for="end_date" class="form-label fw-bold text-secondary">End Date</label>
+                <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date_str }}">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-funnel"></i> Filter</button>
             </div>
         </form>
     </div>
 </div>
-{% endif %}
 
 <!-- Admin Role KPI Dashboard -->
 {% if current_user.role == 'Admin' %}
@@ -44,6 +51,7 @@
             <div class="card-body py-3">
                 <h6 class="text-uppercase text-white-50 small mb-1">Total Fee Collected</h6>
                 <h3 class="mb-0 fw-bold">Rs. {{ "%.2f"|format(total_fees) }}</h3>
+                <small class="text-white-50 mt-2 d-block"><i class="bi bi-people-fill"></i> {{ students_paid_count }} Students Paid</small>
             </div>
         </div>
     </div>
@@ -68,12 +76,31 @@
 <div class="row mb-4">
     <!-- Chart Section -->
     <div class="col-md-12 mb-4">
-        <div class="card shadow-sm border-0 h-100">
-            <div class="card-header bg-white border-0 py-3">
-                <h5 class="mb-0 fw-bold text-secondary"><i class="bi bi-bar-chart-line-fill text-primary"></i> Monthly Collections vs. Expenses ({{ date.today().year if date else '' }})</h5>
+        <div class="accordion" id="adminChartsAccordion">
+            <div class="accordion-item shadow-sm border-0 mb-3 rounded">
+                <h2 class="accordion-header" id="headingFinancial">
+                    <button class="accordion-button collapsed bg-white text-secondary fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFinancial" aria-expanded="false" aria-controls="collapseFinancial">
+                        <i class="bi bi-cash-coin text-success me-2"></i> Monthly Financial Overview ({{ date.today().year if date else '' }})
+                    </button>
+                </h2>
+                <div id="collapseFinancial" class="accordion-collapse collapse" aria-labelledby="headingFinancial" data-bs-parent="#adminChartsAccordion">
+                    <div class="accordion-body">
+                        <canvas id="monthlyFinancialChart" height="280"></canvas>
+                    </div>
+                </div>
             </div>
-            <div class="card-body">
-                <canvas id="monthlyFinancialChart" height="280"></canvas>
+
+            <div class="accordion-item shadow-sm border-0 rounded">
+                <h2 class="accordion-header" id="headingAttendance">
+                    <button class="accordion-button collapsed bg-white text-secondary fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAttendance" aria-expanded="false" aria-controls="collapseAttendance">
+                        <i class="bi bi-graph-up text-primary me-2"></i> Daily Attendance Trend (Last 14 Classes)
+                    </button>
+                </h2>
+                <div id="collapseAttendance" class="accordion-collapse collapse" aria-labelledby="headingAttendance" data-bs-parent="#adminChartsAccordion">
+                    <div class="accordion-body">
+                        <canvas id="dailyAttendanceChart" height="280"></canvas>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -116,19 +143,124 @@
     </div>
 </div>
 <div class="row g-4 mb-4">
-    <div class="col-md-6">
+    <div class="col-md-4">
         <div class="card bg-info text-white shadow-sm border-0 h-100">
             <div class="card-body">
-                <h6 class="text-uppercase text-white-50 small mb-1"><i class="bi bi-cash"></i> Hand Cash (Cash Collections)</h6>
+                <h6 class="text-uppercase text-white-50 small mb-1"><i class="bi bi-cash"></i> Hand Cash (Filtered)</h6>
                 <h3 class="mb-0 fw-bold">Rs. {{ "%.2f"|format(hand_cash) }}</h3>
             </div>
         </div>
     </div>
-    <div class="col-md-6">
+    <div class="col-md-4">
         <div class="card bg-dark text-white shadow-sm border-0 h-100">
             <div class="card-body">
-                <h6 class="text-uppercase text-white-50 small mb-1"><i class="bi bi-bank"></i> In Account (Online Collections)</h6>
+                <h6 class="text-uppercase text-white-50 small mb-1"><i class="bi bi-bank"></i> In Account (Filtered)</h6>
                 <h3 class="mb-0 fw-bold">Rs. {{ "%.2f"|format(in_account) }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-success bg-opacity-75 text-white shadow-sm border-0 h-100">
+            <div class="card-body">
+                <h6 class="text-uppercase text-white-50 small mb-1"><i class="bi bi-people"></i> Students Paid (Filtered)</h6>
+                <h3 class="mb-0 fw-bold">{{ students_paid_count }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3 border-0">
+                <h5 class="mb-0 fw-bold text-secondary"><i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>Student Irregularities</h5>
+            </div>
+            <div class="card-body p-0">
+                <ul class="nav nav-tabs nav-fill bg-light border-bottom-0" id="irregularitiesTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active text-danger fw-bold" id="today-absent-tab" data-bs-toggle="tab" data-bs-target="#today-absent" type="button" role="tab"><i class="bi bi-calendar-x"></i> Today's Absentees ({{ today_absentees|length }})</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link text-warning fw-bold" id="consec-absent-tab" data-bs-toggle="tab" data-bs-target="#consec-absent" type="button" role="tab"><i class="bi bi-person-x"></i> Absent > 2 Days ({{ consecutive_absences|length }})</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link text-secondary fw-bold" id="low-att-tab" data-bs-toggle="tab" data-bs-target="#low-att" type="button" role="tab"><i class="bi bi-graph-down"></i> At Risk < 70% ({{ low_attendance|length }})</button>
+                    </li>
+                </ul>
+                <div class="tab-content p-3" id="irregularitiesTabContent">
+                    <!-- Tab 1 -->
+                    <div class="tab-pane fade show active" id="today-absent" role="tabpanel">
+                        <div class="table-responsive">
+                            <table class="table align-middle mb-0">
+                                <thead class="table-light"><tr><th>Reg ID</th><th>Name</th><th>Status</th><th>Contact</th></tr></thead>
+                                <tbody>
+                                    {% for rec in today_absentees %}
+                                    <tr>
+                                        <td>{{ rec.student.registration_id }}</td>
+                                        <td>{{ rec.student.full_name }}</td>
+                                        <td><span class="badge {% if rec.status == 'Absent' %}bg-danger{% else %}bg-warning text-dark{% endif %}">{{ rec.status }}</span></td>
+                                        <td>
+                                            <a href="https://wa.me/92{{ rec.student.phone[1:] if rec.student.phone.startswith('0') else rec.student.phone }}" target="_blank" class="btn btn-sm btn-success rounded-circle"><i class="bi bi-whatsapp"></i></a>
+                                            <a href="tel:{{ rec.student.phone }}" class="btn btn-sm btn-primary rounded-circle"><i class="bi bi-telephone"></i></a>
+                                            <span class="ms-1 small">{{ rec.student.phone }}</span>
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr><td colspan="4" class="text-center text-muted">No students are absent today.</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <!-- Tab 2 -->
+                    <div class="tab-pane fade" id="consec-absent" role="tabpanel">
+                        <div class="table-responsive">
+                            <table class="table align-middle mb-0">
+                                <thead class="table-light"><tr><th>Reg ID</th><th>Name</th><th>Alert</th><th>Contact</th></tr></thead>
+                                <tbody>
+                                    {% for stu in consecutive_absences %}
+                                    <tr>
+                                        <td>{{ stu.registration_id }}</td>
+                                        <td>{{ stu.full_name }}</td>
+                                        <td><span class="badge bg-danger">Consecutive Absences</span></td>
+                                        <td>
+                                            <a href="https://wa.me/92{{ stu.phone[1:] if stu.phone.startswith('0') else stu.phone }}" target="_blank" class="btn btn-sm btn-success rounded-circle"><i class="bi bi-whatsapp"></i></a>
+                                            <a href="tel:{{ stu.phone }}" class="btn btn-sm btn-primary rounded-circle"><i class="bi bi-telephone"></i></a>
+                                            <span class="ms-1 small">{{ stu.phone }}</span>
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr><td colspan="4" class="text-center text-muted">No students with 3+ consecutive absences.</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <!-- Tab 3 -->
+                    <div class="tab-pane fade" id="low-att" role="tabpanel">
+                        <div class="table-responsive">
+                            <table class="table align-middle mb-0">
+                                <thead class="table-light"><tr><th>Reg ID</th><th>Name</th><th>Attendance</th><th>Contact</th></tr></thead>
+                                <tbody>
+                                    {% for item in low_attendance %}
+                                    <tr>
+                                        <td>{{ item.student.registration_id }}</td>
+                                        <td>{{ item.student.full_name }}</td>
+                                        <td><span class="text-danger fw-bold">{{ item.formatted }}</span></td>
+                                        <td>
+                                            <a href="https://wa.me/92{{ item.student.phone[1:] if item.student.phone.startswith('0') else item.student.phone }}" target="_blank" class="btn btn-sm btn-success rounded-circle"><i class="bi bi-whatsapp"></i></a>
+                                            <a href="tel:{{ item.student.phone }}" class="btn btn-sm btn-primary rounded-circle"><i class="bi bi-telephone"></i></a>
+                                            <span class="ms-1 small">{{ item.student.phone }}</span>
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr><td colspan="4" class="text-center text-muted">No students at risk.</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -216,38 +348,69 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-    const ctx = document.getElementById('monthlyFinancialChart').getContext('2d');
-    const monthlyFinancialChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: {{ months_list|tojson }},
-            datasets: [
-                {
-                    label: 'Fee Collections (Rs.)',
-                    data: {{ monthly_collections|tojson }},
-                    backgroundColor: 'rgba(40, 167, 69, 0.7)',
-                    borderColor: 'rgba(40, 167, 69, 1)',
-                    borderWidth: 1
-                },
-                {
-                    label: 'Expenses (Rs.)',
-                    data: {{ monthly_expenses|tojson }},
-                    backgroundColor: 'rgba(220, 53, 69, 0.7)',
-                    borderColor: 'rgba(220, 53, 69, 1)',
-                    borderWidth: 1
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true
+    const ctx = document.getElementById('monthlyFinancialChart');
+    if (ctx) {
+        new Chart(ctx.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: {{ months_list|tojson }},
+                datasets: [
+                    {
+                        label: 'Fee Collections (Rs.)',
+                        data: {{ monthly_collections|tojson }},
+                        backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                        borderColor: 'rgba(40, 167, 69, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Expenses (Rs.)',
+                        data: {{ monthly_expenses|tojson }},
+                        backgroundColor: 'rgba(220, 53, 69, 0.7)',
+                        borderColor: 'rgba(220, 53, 69, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
                 }
             }
-        }
-    });
+        });
+    }
+
+    const attCtx = document.getElementById('dailyAttendanceChart');
+    if (attCtx) {
+        new Chart(attCtx.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: {{ daily_chart_dates|tojson }},
+                datasets: [{
+                    label: 'Attendance %',
+                    data: {{ daily_chart_percentages|tojson }},
+                    backgroundColor: 'rgba(13, 110, 253, 0.2)',
+                    borderColor: 'rgba(13, 110, 253, 1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100
+                    }
+                }
+            }
+        });
+    }
 });
 </script>
 {% endif %}

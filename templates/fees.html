@@ -33,6 +33,7 @@
                         <th>Reg ID</th>
                         <th>Student Name</th>
                         <th>Course</th>
+                        <th>For Month</th>
                         <th>Payment Method</th>
                         <th>Collected By</th>
                         <th>Amount Paid</th>
@@ -52,6 +53,7 @@
                             <span class="text-muted small">No Course</span>
                             {% endif %}
                         </td>
+                        <td><span class="badge bg-secondary">{{ fee.fee_month }}</span></td>
                         <td>
                             <span class="badge {% if fee.payment_method == 'Cash' %}bg-warning text-dark{% else %}bg-info text-white{% endif %}">
                                 {{ fee.payment_method }}
@@ -112,6 +114,11 @@
                                         <div class="col-6 text-end">
                                             <span class="text-muted d-block small">Payment Method</span>
                                             <span class="badge bg-secondary">{{ fee.payment_method }}</span>
+                                        </div>
+                                        
+                                        <div class="col-6 mt-2">
+                                            <span class="text-muted d-block small">Fee Month</span>
+                                            <strong>{{ fee.fee_month }}</strong>
                                         </div>
                                         
                                         <hr class="my-2">
@@ -285,6 +292,14 @@
                             <input class="form-check-input" type="radio" name="payment_method" id="method_online" value="Online">
                             <label class="form-check-input-label" for="method_online">In Account (Online)</label>
                         </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="fee_month" class="form-label">Fee Month <span class="text-danger">*</span></label>
+                        <input type="month" class="form-control" id="fee_month" name="fee_month" required>
+                        <script>
+                            // Default to current month
+                            document.getElementById('fee_month').value = new Date().toISOString().slice(0, 7);
+                        </script>
                     </div>
                     <div class="mb-3">
                         <label for="date_collected" class="form-label">Collection Date (Optional/Past allowed)</label>

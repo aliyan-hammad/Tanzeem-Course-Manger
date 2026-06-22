@@ -26,12 +26,21 @@ def log_audit(action_type, module, record_id=None, old_values=None, new_values=N
     except Exception as e:
         print(f"Error logging audit: {e}")
 
-def calculate_attendance(student_id, course_id):
+def calculate_attendance(student_id, course_id, subject_name=None, start_date=None, end_date=None):
     """
     Calculates exactly how many sessions have been created for the course (denominator)
-    and how many times the student was explicitly marked 'Present' (numerator).
+    and how many times the student was explicitly marked 'Present' (numerator),
+    filtering by subject or date range if provided.
     """
-    total_sessions = ClassSession.query.filter_by(course_id=course_id).count()
+    query_session = ClassSession.query.filter_by(course_id=course_id)
+    if subject_name:
+        query_session = query_session.filter_by(subject_name=subject_name)
+    if start_date:
+        query_session = query_session.filter(ClassSession.date >= start_date)
+    if end_date:
+        query_session = query_session.filter(ClassSession.date <= end_date)
+        
+    total_sessions = query_session.count()
     
     if total_sessions == 0:
         return {
@@ -41,11 +50,19 @@ def calculate_attendance(student_id, course_id):
             'formatted': "0% (0/0 Attended)"
         }
         
-    attended_count = Attendance.query.join(ClassSession).filter(
+    att_query = Attendance.query.join(ClassSession).filter(
         Attendance.student_id == student_id,
         ClassSession.course_id == course_id,
         Attendance.status == 'Present'
-    ).count()
+    )
+    if subject_name:
+        att_query = att_query.filter(ClassSession.subject_name == subject_name)
+    if start_date:
+        att_query = att_query.filter(ClassSession.date >= start_date)
+    if end_date:
+        att_query = att_query.filter(ClassSession.date <= end_date)
+        
+    attended_count = att_query.count()
     
     percentage = (attended_count / total_sessions) * 100
     
