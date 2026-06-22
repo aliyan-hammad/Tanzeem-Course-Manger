@@ -1,0 +1,374 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 class="mb-4">Financial & Academic Reports</h2>
+
+<!-- Filter Section -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+        <form action="{{ url_for('admin.reports') }}" method="POST" class="row g-3 align-items-end">
+            <div class="col-md-2">
+                <label for="start_date" class="form-label font-weight-bold" style="font-size: 0.85rem;">Start Date</label>
+                <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date }}" required>
+            </div>
+            <div class="col-md-2">
+                <label for="end_date" class="form-label font-weight-bold" style="font-size: 0.85rem;">End Date</label>
+                <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date }}" required>
+            </div>
+            <div class="col-md-3">
+                <label for="course_id" class="form-label font-weight-bold" style="font-size: 0.85rem;">Course Filter</label>
+                <select class="form-select" id="course_id" name="course_id">
+                    <option value="" {% if not selected_course_id %}selected{% endif %}>All Courses</option>
+                    {% for course in courses %}
+                    <option value="{{ course.id }}" {% if selected_course_id|string == course.id|string %}selected{% endif %}>{{ course.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="subject" class="form-label font-weight-bold" style="font-size: 0.85rem;">Subject (Attendance)</label>
+                <select class="form-select" id="subject" name="subject">
+                    <option value="" {% if not selected_subject %}selected{% endif %}>All Subjects</option>
+                    <option value="Arabic" {% if selected_subject == 'Arabic' %}selected{% endif %}>Arabic</option>
+                    <option value="Seerah" {% if selected_subject == 'Seerah' %}selected{% endif %}>Seerah</option>
+                    <option value="Tafseer" {% if selected_subject == 'Tafseer' %}selected{% endif %}>Tafseer</option>
+                    <option value="Tajweed" {% if selected_subject == 'Tajweed' %}selected{% endif %}>Tajweed</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-funnel"></i> Apply Filter</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- KPI Summary Cards (Specific to the Filtered Date Range) -->
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card bg-success text-white shadow-sm border-0">
+            <div class="card-body text-center py-3">
+                <h6 class="text-uppercase text-white-50 small mb-1">Fees Collected (in Range)</h6>
+                <h3 class="mb-0">Rs. {{ "%.2f"|format(total_fees) }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-danger text-white shadow-sm border-0">
+            <div class="card-body text-center py-3">
+                <h6 class="text-uppercase text-white-50 small mb-1">Expenses (in Range)</h6>
+                <h3 class="mb-0">Rs. {{ "%.2f"|format(total_expenses) }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        {% set net_profit = total_fees - total_expenses %}
+        <div class="card {% if net_profit >= 0 %}bg-info{% else %}bg-warning text-dark{% endif %} text-white shadow-sm border-0">
+            <div class="card-body text-center py-3">
+                <h6 class="text-uppercase text-white-50 small mb-1">Net Balance (in Range)</h6>
+                <h3 class="mb-0">Rs. {{ "%.2f"|format(net_profit) }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabs Control -->
+<ul class="nav nav-tabs mb-3" id="reportsTab" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="students-tab" data-bs-toggle="tab" data-bs-target="#students" type="button" role="tab" aria-controls="students" aria-selected="true">
+            <i class="bi bi-people"></i> Master Student Registry
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="fees-tab" data-bs-toggle="tab" data-bs-target="#fees" type="button" role="tab" aria-controls="fees" aria-selected="false">
+            <i class="bi bi-cash-coin"></i> Fee Collection Logs
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="expenses-tab" data-bs-toggle="tab" data-bs-target="#expenses" type="button" role="tab" aria-controls="expenses" aria-selected="false">
+            <i class="bi bi-cart-dash"></i> Expenses Ledger
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="attendance-tab" data-bs-toggle="tab" data-bs-target="#attendance" type="button" role="tab" aria-controls="attendance" aria-selected="false">
+            <i class="bi bi-calendar-check"></i> Attendance Summary
+        </button>
+    </li>
+</ul>
+
+<!-- Tabs Content -->
+<div class="tab-content" id="reportsTabContent">
+    <!-- Student Tab -->
+    <div class="tab-pane fade show active" id="students" role="tabpanel" aria-labelledby="students-tab">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                <h5 class="mb-0">Student Roster (Total: {{ students|length }})</h5>
+                <div>
+                    <button type="button" class="btn btn-sm btn-outline-danger me-2" onclick="exportToPDF('students_wrapper', 'Student_Registry_Report')">
+                        <i class="bi bi-file-pdf"></i> Save as PDF
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-success" onclick="exportToExcel('studentsTable', 'Student_Registry_Report')">
+                        <i class="bi bi-file-excel"></i> Export Excel
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0" id="students_wrapper">
+                <div class="p-3 d-print-block d-none">
+                    <h3>Student Registry Report</h3>
+                    <p class="text-muted">Generated on: {{ date.today if date else '' }}</p>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="studentsTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Reg ID</th>
+                                <th>Name</th>
+                                <th>Father's Name</th>
+                                <th>Phone</th>
+                                <th>CNIC</th>
+                                <th>Course</th>
+                                <th>Status</th>
+                                <th>Enrollment Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in students %}
+                            <tr>
+                                <td><strong>{{ student.registration_id }}</strong></td>
+                                <td>{{ student.full_name }}</td>
+                                <td>{{ student.father_name }}</td>
+                                <td>{{ student.phone }}</td>
+                                <td>{{ student.cnic if student.cnic else '-' }}</td>
+                                <td>
+                                    {% if student.course %}
+                                    <span class="badge bg-light text-dark border">{{ student.course.name }}</span>
+                                    {% else %}
+                                    <span class="text-muted small">No Course</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge {% if student.status == 'Active' %}bg-success{% else %}bg-secondary{% endif %}">
+                                        {{ student.status }}
+                                    </span>
+                                </td>
+                                <td>{{ student.enrollment_date.strftime('%Y-%m-%d') }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="8" class="text-center py-4">No students found for this filter.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fee Collection Tab -->
+    <div class="tab-pane fade" id="fees" role="tabpanel" aria-labelledby="fees-tab">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                <h5 class="mb-0">Fee Logs ({{ start_date }} to {{ end_date }})</h5>
+                <div>
+                    <button type="button" class="btn btn-sm btn-outline-danger me-2" onclick="exportToPDF('fees_wrapper', 'Fee_Collection_Report')">
+                        <i class="bi bi-file-pdf"></i> Save as PDF
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-success" onclick="exportToExcel('feesTable', 'Fee_Collection_Report')">
+                        <i class="bi bi-file-excel"></i> Export Excel
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0" id="fees_wrapper">
+                <div class="p-3 d-print-block d-none">
+                    <h3>Fee Collection Report</h3>
+                    <p class="text-muted">Period: {{ start_date }} to {{ end_date }}</p>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="feesTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Receipt No</th>
+                                <th>Reg ID</th>
+                                <th>Student Name</th>
+                                <th>Course</th>
+                                <th>Payment Method</th>
+                                <th>Collected By</th>
+                                <th>Amount Paid</th>
+                                <th>Date Collected</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for fee in fees %}
+                            <tr>
+                                <td>#{{ fee.id }}</td>
+                                <td><strong>{{ fee.student.registration_id }}</strong></td>
+                                <td>{{ fee.student.full_name }}</td>
+                                <td>{{ fee.student.course.name if fee.student.course else 'No Course' }}</td>
+                                <td><span class="badge bg-light text-dark border">{{ fee.payment_method }}</span></td>
+                                <td>
+                                    {% if fee.collected_by %}
+                                        {{ fee.collected_by.full_name if fee.collected_by.full_name else fee.collected_by.username }}
+                                    {% else %}
+                                        System Admin
+                                    {% endif %}
+                                </td>
+                                <td class="text-success fw-bold">Rs. {{ "%.2f"|format(fee.amount_paid) }}</td>
+                                <td>{{ fee.date_collected.strftime('%Y-%m-%d %H:%M') }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center py-4">No fee transactions found within this date range.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Expenses Tab -->
+    <div class="tab-pane fade" id="expenses" role="tabpanel" aria-labelledby="expenses-tab">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                <h5 class="mb-0">Expense Ledger ({{ start_date }} to {{ end_date }})</h5>
+                <div>
+                    <button type="button" class="btn btn-sm btn-outline-danger me-2" onclick="exportToPDF('expenses_wrapper', 'Expenses_Report')">
+                        <i class="bi bi-file-pdf"></i> Save as PDF
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-success" onclick="exportToExcel('expensesTable', 'Expenses_Report')">
+                        <i class="bi bi-file-excel"></i> Export Excel
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0" id="expenses_wrapper">
+                <div class="p-3 d-print-block d-none">
+                    <h3>Expenses Ledger Report</h3>
+                    <p class="text-muted">Period: {{ start_date }} to {{ end_date }}</p>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="expensesTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Expense ID</th>
+                                <th>Title / Description</th>
+                                <th>Associated Course</th>
+                                <th>Payment Method</th>
+                                <th>Amount</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for exp in expenses %}
+                            <tr>
+                                <td>#{{ exp.id }}</td>
+                                <td><strong>{{ exp.title }}</strong></td>
+                                <td>{{ exp.course.name if exp.course else 'General / None' }}</td>
+                                <td><span class="badge bg-light text-dark border">{{ exp.payment_method }}</span></td>
+                                <td class="text-danger fw-bold">Rs. {{ "%.2f"|format(exp.amount) }}</td>
+                                <td>{{ exp.expense_date.strftime('%Y-%m-%d') }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4">No expenses found within this date range.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attendance Summary Tab -->
+    <div class="tab-pane fade" id="attendance" role="tabpanel" aria-labelledby="attendance-tab">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                <h5 class="mb-0">
+                    Academic Attendance Summaries 
+                    {% if selected_subject %}<span class="badge bg-info text-dark">{{ selected_subject }}</span>{% endif %}
+                    <span class="fs-6 text-muted">({{ start_date }} to {{ end_date }})</span>
+                </h5>
+                <div>
+                    <button type="button" class="btn btn-sm btn-outline-danger me-2" onclick="exportToPDF('attendance_wrapper', 'Attendance_Summary_Report')">
+                        <i class="bi bi-file-pdf"></i> Save as PDF
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-success" onclick="exportToExcel('attendanceTable', 'Attendance_Summary_Report')">
+                        <i class="bi bi-file-excel"></i> Export Excel
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0" id="attendance_wrapper">
+                <div class="p-3 d-print-block d-none">
+                    <h3>Student Attendance Summary {% if selected_subject %}- {{ selected_subject }}{% else %}- All Subjects{% endif %}</h3>
+                    <p class="text-muted">Period: {{ start_date }} to {{ end_date }}</p>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="attendanceTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Reg ID</th>
+                                <th>Student Name</th>
+                                <th>Course</th>
+                                <th class="text-center">Present Days</th>
+                                <th class="text-center">Absent Days</th>
+                                <th class="text-center">Leave Days</th>
+                                <th class="text-center">Attendance %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for stat in attendance_stats %}
+                            <tr>
+                                <td><strong>{{ stat.student.registration_id }}</strong></td>
+                                <td>{{ stat.student.full_name }}</td>
+                                <td>{{ stat.student.course.name if stat.student.course else 'No Course' }}</td>
+                                <td class="text-center text-success fw-bold">{{ stat.present }}</td>
+                                <td class="text-center text-danger fw-bold">{{ stat.absent }}</td>
+                                <td class="text-center text-warning fw-bold">{{ stat.leave }}</td>
+                                <td class="text-center fw-bold">
+                                    {% set perc = stat.calc.percentage %}
+                                    <span class="{% if perc >= 75 %}text-success{% else %}text-danger{% endif %}">{{ stat.calc.formatted }}</span>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center py-4">No attendance registries recorded within this date range.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include client-side libraries for PDF and Excel generation -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<script>
+function exportToExcel(tableId, filename) {
+    const table = document.getElementById(tableId);
+    const wb = XLSX.utils.table_to_book(table, { sheet: "Report" });
+    const formattedDate = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `${filename}_${formattedDate}.xlsx`);
+}
+
+function exportToPDF(elementId, filename) {
+    const element = document.getElementById(elementId);
+    const formattedDate = new Date().toISOString().slice(0, 10);
+    
+    // Configure PDF options
+    const opt = {
+        margin:       [10, 10, 10, 10],
+        filename:     `${filename}_${formattedDate}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    };
+    
+    // Save report directly as PDF
+    html2pdf().set(opt).from(element).save();
+}
+</script>
+{% endblock %}

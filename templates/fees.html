@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Fees Collection</h2>
+    <div class="d-flex gap-3 align-items-center">
+        <form method="GET" action="{{ url_for('coordinator.fees') }}" class="d-flex align-items-center gap-2">
+            <label for="course_id" class="text-nowrap fw-bold mb-0">Course:</label>
+            <select class="form-select form-select-sm" id="course_id" name="course_id" onchange="this.form.submit()">
+                {% if courses|length != 1 %}
+                <option value="all" {% if selected_course_id == 'all' %}selected{% endif %}>All Courses</option>
+                {% endif %}
+                {% for course in courses %}
+                <option value="{{ course.id }}" {% if selected_course_id|string == course.id|string %}selected{% endif %}>{{ course.name }}</option>
+                {% endfor %}
+            </select>
+        </form>
+        {% if current_user.role == 'Coordinator' %}
+        <button class="btn btn-success text-nowrap" data-bs-toggle="modal" data-bs-target="#collectFeeModal">
+            <i class="bi bi-cash"></i> Collect Fee
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Transaction ID</th>
+                        <th>Reg ID</th>
+                        <th>Student Name</th>
+                        <th>Course</th>
+                        <th>Payment Method</th>
+                        <th>Collected By</th>
+                        <th>Amount Paid</th>
+                        <th>Date Collected</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fee in fees %}
+                    <tr style="cursor: pointer;" data-bs-toggle="modal" data-bs-target="#voucherModal{{ fee.id }}" title="Click to view voucher">
+                        <td>#{{ fee.id }}</td>
+                        <td><strong>{{ fee.student.registration_id }}</strong></td>
+                        <td>{{ fee.student.full_name }}</td>
+                        <td>
+                            {% if fee.student.course %}
+                            <span class="badge bg-light text-dark border">{{ fee.student.course.name }}</span>
+                            {% else %}
+                            <span class="text-muted small">No Course</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge {% if fee.payment_method == 'Cash' %}bg-warning text-dark{% else %}bg-info text-white{% endif %}">
+                                {{ fee.payment_method }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if fee.collected_by %}
+                            <span class="text-secondary small"><i class="bi bi-person"></i> {{ fee.collected_by.full_name if fee.collected_by.full_name else fee.collected_by.username }}</span>
+                            {% else %}
+                            <span class="text-muted small"><i class="bi bi-shield-check"></i> System Admin</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-success fw-bold">Rs. {{ "%.2f"|format(fee.amount_paid) }}</td>
+                        <td>{{ fee.date_collected.strftime('%Y-%m-%d %H:%M') }}</td>
+                    </tr>
+
+                    <!-- Voucher Modal -->
+                    <div class="modal fade" id="voucherModal{{ fee.id }}" tabindex="-1" aria-labelledby="voucherModalLabel{{ fee.id }}" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="voucherModalLabel{{ fee.id }}">Payment Receipt</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body p-4" id="feeReceiptPrintArea{{ fee.id }}">
+                                    <div class="text-center border-bottom pb-3 mb-3">
+                                        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="mb-2" style="max-height: 50px;">
+                                        <h4 class="text-primary mb-1 fw-bold">Tanzeem-e-Islami</h4>
+                                        <p class="text-muted mb-0">JAZAKALLAH KHAIR</p>
+                                        <span class="badge bg-success text-uppercase mt-2">PAID VOUCHER</span>
+                                    </div>
+                                    
+                                    <div class="row g-3">
+                                        <div class="col-6">
+                                            <span class="text-muted d-block small">Voucher No</span>
+                                            <strong>#{{ fee.id }}</strong>
+                                        </div>
+                                        <div class="col-6 text-end">
+                                            <span class="text-muted d-block small">Receipt Date</span>
+                                            <strong>{{ fee.date_collected.strftime('%Y-%m-%d %H:%M') }}</strong>
+                                        </div>
+                                        
+                                        <hr class="my-2">
+                                        
+                                        <div class="col-6">
+                                            <span class="text-muted d-block small">Student Name</span>
+                                            <span>{{ fee.student.full_name }}</span>
+                                        </div>
+                                        <div class="col-6 text-end">
+                                            <span class="text-muted d-block small">Registration ID</span>
+                                            <strong>{{ fee.student.registration_id }}</strong>
+                                        </div>
+                                        
+                                        <div class="col-6">
+                                            <span class="text-muted d-block small">Course Title</span>
+                                            <span>{{ fee.student.course.name if fee.student.course else 'No Course' }}</span>
+                                        </div>
+                                        <div class="col-6 text-end">
+                                            <span class="text-muted d-block small">Payment Method</span>
+                                            <span class="badge bg-secondary">{{ fee.payment_method }}</span>
+                                        </div>
+                                        
+                                        <hr class="my-2">
+                                        
+                                        <div class="col-12 bg-light p-3 rounded text-center">
+                                            <span class="text-muted d-block small">TOTAL AMOUNT PAID</span>
+                                            <h3 class="text-success fw-bold mb-0">Rs. {{ "%.2f"|format(fee.amount_paid) }}</h3>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="d-flex justify-content-between align-items-end mt-4 pt-3 border-top">
+                                        <div>
+                                            <small class="text-muted d-block">Collected By</small>
+                                            <strong>
+                                                {% if fee.collected_by %}
+                                                    {{ fee.collected_by.full_name if fee.collected_by.full_name else fee.collected_by.username }}
+                                                {% else %}
+                                                    SYSTEM ADMIN
+                                                {% endif %}
+                                            </strong>
+                                        </div>
+                                        <div class="no-print">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="printVoucher('feeReceiptPrintArea{{ fee.id }}');">
+                                                <i class="bi bi-printer"></i> Print
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    {% if current_user.role == 'Coordinator' %}
+                                    <div class="d-flex justify-content-between mt-3 pt-3 border-top bg-light p-2 rounded no-print">
+                                        <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editRequestModal{{ fee.id }}" data-bs-dismiss="modal">
+                                            <i class="bi bi-pencil-square"></i> Request Edit
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteRequestModal{{ fee.id }}" data-bs-dismiss="modal">
+                                            <i class="bi bi-trash"></i> Request Delete
+                                        </button>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Edit Request Modal -->
+                    {% if current_user.role == 'Coordinator' %}
+                    <div class="modal fade" id="editRequestModal{{ fee.id }}" tabindex="-1" aria-labelledby="editRequestModalLabel{{ fee.id }}" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header bg-warning text-dark">
+                                    <h5 class="modal-title" id="editRequestModalLabel{{ fee.id }}"><i class="bi bi-pencil-square"></i> Request Edit for Fee Voucher #{{ fee.id }}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <form action="{{ url_for('coordinator.request_edit') }}" method="POST">
+                                    <div class="modal-body">
+                                        <input type="hidden" name="module" value="Fee">
+                                        <input type="hidden" name="record_id" value="{{ fee.id }}">
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label font-weight-bold">Proposed Amount (Rs.)</label>
+                                            <input type="number" step="0.01" class="form-control" name="amount_paid" value="{{ fee.amount_paid }}" required min="0.01">
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label d-block font-weight-bold">Proposed Payment Method</label>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="payment_method" id="edit_method_cash_{{ fee.id }}" value="Cash" {% if fee.payment_method == 'Cash' %}checked{% endif %}>
+                                                <label class="form-check-input-label" for="edit_method_cash_{{ fee.id }}">Hand Cash</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="payment_method" id="edit_method_online_{{ fee.id }}" value="Online" {% if fee.payment_method == 'Online' %}checked{% endif %}>
+                                                <label class="form-check-input-label" for="edit_method_online_{{ fee.id }}">In Account (Online)</label>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label font-weight-bold">Proposed Collection Date</label>
+                                            <input type="date" class="form-control" name="date_collected" value="{{ fee.date_collected.strftime('%Y-%m-%d') }}" required>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="edit_reason_{{ fee.id }}" class="form-label font-weight-bold">Reason for Edit <span class="text-danger">*</span></label>
+                                            <textarea class="form-control" id="edit_reason_{{ fee.id }}" name="reason" rows="2" required placeholder="Describe why this edit is needed..."></textarea>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="edit_comments_{{ fee.id }}" class="form-label font-weight-bold">Optional Comments</label>
+                                            <textarea class="form-control" id="edit_comments_{{ fee.id }}" name="comments" rows="2" placeholder="Any additional information for the admin..."></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#voucherModal{{ fee.id }}" data-bs-dismiss="modal">Back</button>
+                                        <button type="submit" class="btn btn-warning">Submit Edit Request</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Delete Request Modal -->
+                    <div class="modal fade" id="deleteRequestModal{{ fee.id }}" tabindex="-1" aria-labelledby="deleteRequestModalLabel{{ fee.id }}" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header bg-danger text-white">
+                                    <h5 class="modal-title" id="deleteRequestModalLabel{{ fee.id }}"><i class="bi bi-trash"></i> Request Delete for Fee Voucher #{{ fee.id }}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <form action="{{ url_for('coordinator.request_delete') }}" method="POST">
+                                    <div class="modal-body">
+                                        <input type="hidden" name="module" value="Fee">
+                                        <input type="hidden" name="record_id" value="{{ fee.id }}">
+                                        
+                                        <div class="alert alert-warning">
+                                            <i class="bi bi-exclamation-triangle"></i> This action is subject to Admin approval. The record will not be permanently deleted, but rather soft-deleted and removed from active logs.
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="delete_reason_{{ fee.id }}" class="form-label font-weight-bold">Mandatory Delete Reason <span class="text-danger">*</span></label>
+                                            <textarea class="form-control" id="delete_reason_{{ fee.id }}" name="reason" rows="3" required placeholder="Specify the exact reason for deletion..."></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#voucherModal{{ fee.id }}" data-bs-dismiss="modal">Back</button>
+                                        <button type="submit" class="btn btn-danger">Submit Delete Request</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center py-4">No fee collections found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Collect Fee Modal -->
+<div class="modal fade" id="collectFeeModal" tabindex="-1" aria-labelledby="collectFeeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="collectFeeModalLabel">Collect Fee</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('coordinator.fees') }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="registration_id" class="form-label">Search Student (Type Reg ID or Name)</label>
+                        <input type="text" class="form-control" id="registration_id" name="registration_id" list="studentList" placeholder="Start typing registration ID..." required autocomplete="off">
+                        <datalist id="studentList">
+                            {% for student in active_students %}
+                            <option value="{{ student.registration_id }}">{{ student.registration_id }} - {{ student.full_name }} ({% if student.course %}{{ student.course.name }}{% else %}No Course{% endif %})</option>
+                            {% endfor %}
+                        </datalist>
+                    </div>
+                    <div class="mb-3">
+                        <label for="amount_paid" class="form-label">Amount (Rs.)</label>
+                        <input type="number" step="0.01" class="form-control" id="amount_paid" name="amount_paid" required min="0.01">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label d-block">Payment Method</label>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="payment_method" id="method_cash" value="Cash" checked>
+                            <label class="form-check-input-label" for="method_cash">Hand Cash</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="payment_method" id="method_online" value="Online">
+                            <label class="form-check-input-label" for="method_online">In Account (Online)</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="date_collected" class="form-label">Collection Date (Optional/Past allowed)</label>
+                        <input type="date" class="form-control" id="date_collected" name="date_collected">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Save Payment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

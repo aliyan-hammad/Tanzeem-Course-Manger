@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Bulk Attendance Entry</h2>
+    <a href="{{ url_for('coordinator.attendance_course', course_id=course.id) }}" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Sessions
+    </a>
+</div>
+
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body bg-light">
+        <div class="row">
+            <div class="col-md-4">
+                <strong>Course:</strong> {{ course.name }}
+            </div>
+            <div class="col-md-4">
+                <strong>Session Date:</strong> {{ session_obj.date.strftime('%Y-%m-%d') }}
+            </div>
+            <div class="col-md-4">
+                <strong>Subject:</strong> <span class="badge bg-primary">{{ session_obj.subject_name }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form method="POST" action="{{ url_for('coordinator.attendance_bulk', course_id=course.id, session_id=session_obj.id) }}">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Mark Attendance</h5>
+            <div>
+                <button type="button" class="btn btn-sm btn-outline-success" onclick="markAll('Present')">Mark All Present</button>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="markAll('Absent')">Mark All Absent</button>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Reg ID</th>
+                        <th>Student Name</th>
+                        <th class="text-center" style="width: 300px;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for student in students %}
+                    <tr>
+                        <td><strong>{{ student.registration_id }}</strong></td>
+                        <td>{{ student.full_name }}</td>
+                        <td class="text-center">
+                            {% set saved_status = attendance_map.get(student.id, 'Present') %}
+                            <div class="btn-group" role="group">
+                                <input type="radio" class="btn-check" name="status_{{ student.id }}" id="present_{{ student.id }}" value="Present" {% if saved_status == 'Present' %}checked{% endif %}>
+                                <label class="btn btn-outline-success btn-sm px-3" for="present_{{ student.id }}">Present</label>
+
+                                <input type="radio" class="btn-check" name="status_{{ student.id }}" id="absent_{{ student.id }}" value="Absent" {% if saved_status == 'Absent' %}checked{% endif %}>
+                                <label class="btn btn-outline-danger btn-sm px-3" for="absent_{{ student.id }}">Absent</label>
+
+                                <input type="radio" class="btn-check" name="status_{{ student.id }}" id="leave_{{ student.id }}" value="Leave" {% if saved_status == 'Leave' %}checked{% endif %}>
+                                <label class="btn btn-outline-warning btn-sm px-3" for="leave_{{ student.id }}">Leave</label>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer bg-white text-end">
+            <button type="submit" class="btn btn-success btn-lg px-5"><i class="bi bi-check-circle"></i> Save Attendance</button>
+        </div>
+    </div>
+</form>
+
+<script>
+function markAll(status) {
+    const radioButtons = document.querySelectorAll(`input[value="${status}"]`);
+    radioButtons.forEach(radio => {
+        radio.checked = true;
+    });
+}
+</script>
+{% endblock %}

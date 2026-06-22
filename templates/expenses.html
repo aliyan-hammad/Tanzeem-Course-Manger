@@ -1,0 +1,336 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Expenses Tracking</h2>
+    <div class="d-flex gap-3 align-items-center">
+        <form method="GET" action="{{ url_for('coordinator.expenses') }}" class="d-flex align-items-center gap-2">
+            <label for="course_id" class="text-nowrap fw-bold mb-0">Course:</label>
+            <select class="form-select form-select-sm" id="course_id" name="course_id" onchange="this.form.submit()">
+                {% if courses|length != 1 %}
+                <option value="all" {% if selected_course_id == 'all' %}selected{% endif %}>All Courses</option>
+                {% endif %}
+                {% for course in courses %}
+                <option value="{{ course.id }}" {% if selected_course_id|string == course.id|string %}selected{% endif %}>{{ course.name }}</option>
+                {% endfor %}
+            </select>
+        </form>
+        {% if current_user.role == 'Coordinator' %}
+        <button class="btn btn-danger text-nowrap" data-bs-toggle="modal" data-bs-target="#addExpenseModal">
+            <i class="bi bi-cart-plus"></i> Add Expense
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Expense ID</th>
+                        <th>Title / Description</th>
+                        <th>Course Attachment</th>
+                        <th>Payment Method</th>
+                        <th>Amount</th>
+                        <th>Date</th>
+                        {% if current_user.role == 'Coordinator' %}
+                        <th>Actions</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for expense in expenses %}
+                    <tr style="cursor: pointer;" data-bs-toggle="modal" data-bs-target="#expenseVoucherModal{{ expense.id }}" title="Click to view voucher">
+                        <td>#{{ expense.id }}</td>
+                        <td><strong>{{ expense.title }}</strong></td>
+                        <td>
+                            {% if expense.course %}
+                            <span class="badge bg-light text-dark border">{{ expense.course.name }}</span>
+                            {% else %}
+                            <span class="text-muted small">General / None</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge {% if expense.payment_method == 'Cash' %}bg-warning text-dark{% else %}bg-info text-white{% endif %}">
+                                {{ expense.payment_method }}
+                            </span>
+                        </td>
+                        <td class="text-danger fw-bold">Rs. {{ "%.2f"|format(expense.amount) }}</td>
+                        <td>{{ expense.expense_date.strftime('%Y-%m-%d') }}</td>
+                        {% if current_user.role == 'Coordinator' %}
+                        <td>
+                            <button type="button" class="btn btn-xs btn-warning me-1" data-bs-toggle="modal" data-bs-target="#editExpenseRequestModal{{ expense.id }}" onclick="event.stopPropagation();">
+                                <i class="bi bi-pencil-square"></i> Request Edit
+                            </button>
+                            <button type="button" class="btn btn-xs btn-danger" data-bs-toggle="modal" data-bs-target="#deleteExpenseRequestModal{{ expense.id }}" onclick="event.stopPropagation();">
+                                <i class="bi bi-trash"></i> Request Delete
+                            </button>
+                        </td>
+                        {% endif %}
+                    </tr>
+
+                    <!-- Expense Voucher Modal -->
+                    <div class="modal fade" id="expenseVoucherModal{{ expense.id }}" tabindex="-1" aria-labelledby="expenseVoucherModalLabel{{ expense.id }}" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="expenseVoucherModalLabel{{ expense.id }}">Expense Voucher</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body p-4" id="expenseReceiptPrintArea{{ expense.id }}">
+                                    <div class="text-center border-bottom pb-3 mb-3">
+                                        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="mb-2" style="max-height: 50px;">
+                                        <h4 class="text-danger mb-1 fw-bold">Tanzeem-e-Islami</h4>
+                                        <p class="text-muted mb-0">JAZAKALLAH KHAIR</p>
+                                        <span class="badge bg-danger text-uppercase mt-2">EXPENSE VOUCHER</span>
+                                    </div>
+                                    
+                                    <div class="row g-3">
+                                        <div class="col-6">
+                                            <span class="text-muted d-block small">Voucher No</span>
+                                            <strong>#{{ expense.id }}</strong>
+                                        </div>
+                                        <div class="col-6 text-end">
+                                            <span class="text-muted d-block small">Voucher Date</span>
+                                            <strong>{{ expense.expense_date.strftime('%Y-%m-%d %H:%M') if expense.expense_date else 'N/A' }}</strong>
+                                        </div>
+                                        
+                                        <hr class="my-2">
+                                        
+                                        <div class="col-6">
+                                            <span class="text-muted d-block small">Expense Title</span>
+                                            <span>{{ expense.title }}</span>
+                                        </div>
+                                        <div class="col-6 text-end">
+                                            <span class="text-muted d-block small">Course Attachment</span>
+                                            <span>{{ expense.course.name if expense.course else 'General / None' }}</span>
+                                        </div>
+                                        
+                                        <div class="col-6">
+                                            <span class="text-muted d-block small">Payment Method</span>
+                                            <span class="badge bg-secondary">{{ expense.payment_method }}</span>
+                                        </div>
+                                        
+                                        <hr class="my-2">
+                                        
+                                        <div class="col-12 bg-light p-3 rounded text-center">
+                                            <span class="text-muted d-block small">TOTAL AMOUNT PAID</span>
+                                            <h3 class="text-danger fw-bold mb-0">Rs. {{ "%.2f"|format(expense.amount) }}</h3>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="d-flex justify-content-between align-items-end mt-4 pt-3 border-top">
+                                        <div>
+                                            <!-- spacing -->
+                                        </div>
+                                        <div class="no-print">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="printVoucher('expenseReceiptPrintArea{{ expense.id }}');">
+                                                <i class="bi bi-printer"></i> Print
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    {% if current_user.role == 'Coordinator' %}
+                                    <div class="d-flex justify-content-between mt-3 pt-3 border-top bg-light p-2 rounded no-print">
+                                        <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editExpenseRequestModal{{ expense.id }}" data-bs-dismiss="modal">
+                                            <i class="bi bi-pencil-square"></i> Request Edit
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteExpenseRequestModal{{ expense.id }}" data-bs-dismiss="modal">
+                                            <i class="bi bi-trash"></i> Request Delete
+                                        </button>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Edit Expense Request Modal -->
+                    {% if current_user.role == 'Coordinator' %}
+                    <div class="modal fade" id="editExpenseRequestModal{{ expense.id }}" tabindex="-1" aria-labelledby="editExpenseRequestModalLabel{{ expense.id }}" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header bg-warning text-dark">
+                                    <h5 class="modal-title" id="editExpenseRequestModalLabel{{ expense.id }}"><i class="bi bi-pencil-square"></i> Request Edit for Expense #{{ expense.id }}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <form action="{{ url_for('coordinator.request_edit') }}" method="POST">
+                                    <div class="modal-body">
+                                        <input type="hidden" name="module" value="Expense">
+                                        <input type="hidden" name="record_id" value="{{ expense.id }}">
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label font-weight-bold">Proposed Title / Description</label>
+                                            <input type="text" class="form-control" name="title" value="{{ expense.title }}" required>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label font-weight-bold">Proposed Amount (Rs.)</label>
+                                            <input type="number" step="0.01" class="form-control" name="amount" value="{{ expense.amount }}" required min="0.01">
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label d-block font-weight-bold">Proposed Payment Method</label>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="payment_method" id="edit_exp_cash_{{ expense.id }}" value="Cash" {% if expense.payment_method == 'Cash' %}checked{% endif %}>
+                                                <label class="form-check-input-label" for="edit_exp_cash_{{ expense.id }}">Hand Cash</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="payment_method" id="edit_exp_online_{{ expense.id }}" value="Online" {% if expense.payment_method == 'Online' %}checked{% endif %}>
+                                                <label class="form-check-input-label" for="edit_exp_online_{{ expense.id }}">In Account (Online)</label>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label font-weight-bold">Proposed Course Attachment</label>
+                                            <select class="form-select" name="course_id">
+                                                <option value="" {% if not expense.course_id %}selected{% endif %}>General / No Course</option>
+                                                {% for course in courses %}
+                                                <option value="{{ course.id }}" {% if expense.course_id == course.id %}selected{% endif %}>{{ course.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label font-weight-bold">Proposed Date</label>
+                                            <input type="date" class="form-control" name="expense_date" value="{{ expense.expense_date.strftime('%Y-%m-%d') }}" required>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="edit_exp_reason_{{ expense.id }}" class="form-label font-weight-bold">Reason for Edit <span class="text-danger">*</span></label>
+                                            <textarea class="form-control" id="edit_exp_reason_{{ expense.id }}" name="reason" rows="2" required placeholder="Describe why this edit is needed..."></textarea>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="edit_exp_comments_{{ expense.id }}" class="form-label font-weight-bold">Optional Comments</label>
+                                            <textarea class="form-control" id="edit_exp_comments_{{ expense.id }}" name="comments" rows="2" placeholder="Any additional details..."></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-warning">Submit Edit Request</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Delete Expense Request Modal -->
+                    <div class="modal fade" id="deleteExpenseRequestModal{{ expense.id }}" tabindex="-1" aria-labelledby="deleteExpenseRequestModalLabel{{ expense.id }}" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header bg-danger text-white">
+                                    <h5 class="modal-title" id="deleteExpenseRequestModalLabel{{ expense.id }}"><i class="bi bi-trash"></i> Request Delete for Expense #{{ expense.id }}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <form action="{{ url_for('coordinator.request_delete') }}" method="POST">
+                                    <div class="modal-body">
+                                        <input type="hidden" name="module" value="Expense">
+                                        <input type="hidden" name="record_id" value="{{ expense.id }}">
+                                        
+                                        <div class="alert alert-warning">
+                                            <i class="bi bi-exclamation-triangle"></i> This deletion requires Admin approval and will be processed as a soft delete (retaining historical data).
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="delete_exp_reason_{{ expense.id }}" class="form-label font-weight-bold">Mandatory Delete Reason <span class="text-danger">*</span></label>
+                                            <textarea class="form-control" id="delete_exp_reason_{{ expense.id }}" name="reason" rows="3" required placeholder="Specify the reason for deleting this expense..."></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-danger">Submit Delete Request</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4">No expenses found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add Expense Modal -->
+<div class="modal fade" id="addExpenseModal" tabindex="-1" aria-labelledby="addExpenseModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addExpenseModalLabel">Add New Expense</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('coordinator.expenses') }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Expense Title</label>
+                        <select class="form-select" id="title" name="title" onchange="toggleCustomTitle(this, 'custom_title_div')" required>
+                            <option value="" disabled selected>Select expense category</option>
+                            <option value="Stationary">Stationary</option>
+                            <option value="Refreshment">Refreshment</option>
+                            <option value="Other">Other</option>
+                        </select>
+                        <div id="custom_title_div" class="mt-2" style="display: none;">
+                            <input type="text" class="form-control" name="custom_title" placeholder="Type custom expense description">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="amount" class="form-label">Amount (Rs.)</label>
+                        <input type="number" step="0.01" class="form-control" id="amount" name="amount" required min="0.01">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label d-block">Payment Method</label>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="payment_method" id="method_cash" value="Cash" checked>
+                            <label class="form-check-input-label" for="method_cash">Hand Cash</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="payment_method" id="method_online" value="Online">
+                            <label class="form-check-input-label" for="method_online">In Account (Online)</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="course_id" class="form-label">Associate with Course (Optional)</label>
+                        <select class="form-select" id="course_id" name="course_id">
+                            <option value="" selected>General / No specific course</option>
+                            {% for course in courses %}
+                            <option value="{{ course.id }}">{{ course.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="expense_date" class="form-label">Expense Date (Optional/Past allowed)</label>
+                        <input type="date" class="form-control" id="expense_date" name="expense_date">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Save Expense</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleCustomTitle(selectEl, divId) {
+    const div = document.getElementById(divId);
+    const input = div.querySelector('input');
+    if (selectEl.value === 'Other') {
+        div.style.display = 'block';
+        input.required = true;
+    } else {
+        div.style.display = 'none';
+        input.required = false;
+        input.value = '';
+    }
+}
+</script>
+{% endblock %}

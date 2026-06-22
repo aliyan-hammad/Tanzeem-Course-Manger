@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>My Approval Requests</h2>
+    <span class="text-muted small">Status tracking for edit and delete actions</span>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Request ID</th>
+                        <th>Type</th>
+                        <th>Module</th>
+                        <th>Record ID</th>
+                        <th>Reason for Request</th>
+                        <th>Date Submitted</th>
+                        <th>Status</th>
+                        <th>Admin Comments</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for req in requests %}
+                    <tr>
+                        <td>#{{ req.id }}</td>
+                        <td>
+                            <span class="badge {% if req.request_type == 'Edit' %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                                {{ req.request_type }}
+                            </span>
+                        </td>
+                        <td><strong>{{ req.module }}</strong></td>
+                        <td>#{{ req.record_id }}</td>
+                        <td>{{ req.reason }}</td>
+                        <td>{{ req.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            <span class="badge {% if req.status == 'Pending' %}bg-secondary{% elif req.status == 'Approved' %}bg-success{% else %}bg-danger{% endif %}">
+                                {{ req.status }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if req.admin_notes %}
+                            <small class="text-dark fw-semibold">{{ req.admin_notes }}</small>
+                            {% else %}
+                            <span class="text-muted small">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">You have not submitted any approval requests yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>{% if current_user.role == 'Admin' %}System Overview Dashboard{% else %}Coordinator Workspace{% endif %}</h2>
+    <span class="badge bg-secondary p-2"><i class="bi bi-person-circle"></i> {{ current_user.full_name if current_user.full_name else current_user.username }} ({{ current_user.role }})</span>
+</div>
+
+<!-- Course Filter for Admin -->
+{% if current_user.role == 'Admin' %}
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('dashboard.index') }}" class="row g-3 align-items-end">
+            <div class="col-md-8">
+                <label for="course_id" class="form-label fw-bold">Select Course to Filter Dashboard</label>
+                <select class="form-select" id="course_id" name="course_id">
+                    <option value="" {% if not selected_course_id %}selected{% endif %}>Overall Summary (All Courses)</option>
+                    {% for course in courses %}
+                    <option value="{{ course.id }}" {% if selected_course_id|string == course.id|string %}selected{% endif %}>{{ course.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-funnel"></i> Apply Filter</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<!-- Admin Role KPI Dashboard -->
+{% if current_user.role == 'Admin' %}
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white shadow-sm border-0 h-100">
+            <div class="card-body py-3">
+                <h6 class="text-uppercase text-white-50 small mb-1">Total Active Students</h6>
+                <h3 class="mb-0 fw-bold">{{ total_active_students }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white shadow-sm border-0 h-100">
+            <div class="card-body py-3">
+                <h6 class="text-uppercase text-white-50 small mb-1">Total Fee Collected</h6>
+                <h3 class="mb-0 fw-bold">Rs. {{ "%.2f"|format(total_fees) }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-danger text-white shadow-sm border-0 h-100">
+            <div class="card-body py-3">
+                <h6 class="text-uppercase text-white-50 small mb-1">Total Expenses</h6>
+                <h3 class="mb-0 fw-bold">Rs. {{ "%.2f"|format(total_expenses) }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-secondary text-white shadow-sm border-0 h-100">
+            <div class="card-body py-3">
+                <h6 class="text-uppercase text-white-50 small mb-1">Net Balance</h6>
+                <h3 class="mb-0 fw-bold">Rs. {{ "%.2f"|format(net_balance) }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <!-- Chart Section -->
+    <div class="col-md-12 mb-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white border-0 py-3">
+                <h5 class="mb-0 fw-bold text-secondary"><i class="bi bi-bar-chart-line-fill text-primary"></i> Monthly Collections vs. Expenses ({{ date.today().year if date else '' }})</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="monthlyFinancialChart" height="280"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Coordinator Role KPI Dashboard -->
+{% else %}
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card bg-success text-white shadow-sm border-0 h-100">
+            <div class="card-body">
+                <h6 class="text-uppercase text-white-50 small mb-1">Today's Collections</h6>
+                <h3 class="mb-0 fw-bold">Rs. {{ "%.2f"|format(today_collections) }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-primary text-white shadow-sm border-0 h-100">
+            <div class="card-body">
+                <h6 class="text-uppercase text-white-50 small mb-1">This Month's Collections</h6>
+                <h3 class="mb-0 fw-bold">Rs. {{ "%.2f"|format(monthly_collections) }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-danger text-white shadow-sm border-0 h-100">
+            <div class="card-body">
+                <h6 class="text-uppercase text-white-50 small mb-1">Total Expenses Logged</h6>
+                <h3 class="mb-0 fw-bold">Rs. {{ "%.2f"|format(expenses_added) }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-secondary text-white shadow-sm border-0 h-100">
+            <div class="card-body">
+                <h6 class="text-uppercase text-white-50 small mb-1">Net Balance</h6>
+                <h3 class="mb-0 fw-bold">Rs. {{ "%.2f"|format(net_balance) }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="card bg-info text-white shadow-sm border-0 h-100">
+            <div class="card-body">
+                <h6 class="text-uppercase text-white-50 small mb-1"><i class="bi bi-cash"></i> Hand Cash (Cash Collections)</h6>
+                <h3 class="mb-0 fw-bold">Rs. {{ "%.2f"|format(hand_cash) }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card bg-dark text-white shadow-sm border-0 h-100">
+            <div class="card-body">
+                <h6 class="text-uppercase text-white-50 small mb-1"><i class="bi bi-bank"></i> In Account (Online Collections)</h6>
+                <h3 class="mb-0 fw-bold">Rs. {{ "%.2f"|format(in_account) }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row">
+    <!-- Latest Fees Table -->
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3 border-0">
+                <h5 class="mb-0 fw-bold text-secondary">Latest Fee Voucher Logs</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Student (Reg ID)</th>
+                                <th>Amount</th>
+                                <th>Method</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for fee in latest_fees %}
+                            <tr>
+                                <td>{{ fee.student.full_name }} ({{ fee.student.registration_id }})</td>
+                                <td class="text-success fw-bold">+Rs. {{ "%.2f"|format(fee.amount_paid) }}</td>
+                                <td><span class="badge bg-light text-dark border">{{ fee.payment_method }}</span></td>
+                                <td>{{ fee.date_collected.strftime('%Y-%m-%d') }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center py-4">No fee collections yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Latest Expenses Table -->
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3 border-0">
+                <h5 class="mb-0 fw-bold text-secondary">Latest Expense Logs</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Expense Title</th>
+                                <th>Amount</th>
+                                <th>Course</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for expense in latest_expenses %}
+                            <tr>
+                                <td>{{ expense.title }}</td>
+                                <td class="text-danger fw-bold">-Rs. {{ "%.2f"|format(expense.amount) }}</td>
+                                <td><span class="badge bg-light text-dark border">{{ expense.course.name if expense.course else 'General' }}</span></td>
+                                <td>{{ expense.expense_date.strftime('%Y-%m-%d') }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center py-4">No expenses recorded yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart Script -->
+{% if current_user.role == 'Admin' %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const ctx = document.getElementById('monthlyFinancialChart').getContext('2d');
+    const monthlyFinancialChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: {{ months_list|tojson }},
+            datasets: [
+                {
+                    label: 'Fee Collections (Rs.)',
+                    data: {{ monthly_collections|tojson }},
+                    backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                    borderColor: 'rgba(40, 167, 69, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Expenses (Rs.)',
+                    data: {{ monthly_expenses|tojson }},
+                    backgroundColor: 'rgba(220, 53, 69, 0.7)',
+                    borderColor: 'rgba(220, 53, 69, 1)',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+});
+</script>
+{% endif %}
+
+<style>
+.text-xxs {
+    font-size: 0.7rem;
+}
+</style>
+{% endblock %}

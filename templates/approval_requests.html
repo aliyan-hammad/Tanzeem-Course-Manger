@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 class="mb-4">Approval Workflows</h2>
+
+<!-- Tabs -->
+<ul class="nav nav-tabs mb-4" id="requestsTab" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending" type="button" role="tab" aria-controls="pending" aria-selected="true">
+            <i class="bi bi-clock-history"></i> Pending Requests
+            <span class="badge bg-warning text-dark ms-1">{{ pending_requests|length }}</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab" aria-controls="history" aria-selected="false">
+            <i class="bi bi-check-all"></i> Workflow History
+            <span class="badge bg-secondary ms-1">{{ history_requests|length }}</span>
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="requestsTabContent">
+    <!-- Pending Requests Tab -->
+    <div class="tab-pane fade show active" id="pending" role="tabpanel" aria-labelledby="pending-tab">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Type</th>
+                                <th>Module</th>
+                                <th>Record ID</th>
+                                <th>Requested By</th>
+                                <th>Reason</th>
+                                <th>Submitted At</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for req in pending_requests %}
+                            <tr>
+                                <td>#{{ req.id }}</td>
+                                <td>
+                                    <span class="badge {% if req.request_type == 'Edit' %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                                        {{ req.request_type }}
+                                    </span>
+                                </td>
+                                <td><strong>{{ req.module }}</strong></td>
+                                <td>#{{ req.record_id }}</td>
+                                <td>{{ req.requested_by.full_name if req.requested_by.full_name else req.requested_by.username }}</td>
+                                <td><span class="text-truncate d-inline-block" style="max-width: 200px;" title="{{ req.reason }}">{{ req.reason }}</span></td>
+                                <td>{{ req.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#actionModal{{ req.id }}">
+                                        Review & Action
+                                    </button>
+                                </td>
+                            </tr>
+
+                            <!-- Action Modal -->
+                            <div class="modal fade" id="actionModal{{ req.id }}" tabindex="-1" aria-labelledby="actionModalLabel{{ req.id }}" aria-hidden="true">
+                                <div class="modal-dialog modal-lg">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="actionModalLabel{{ req.id }}">Review Request #{{ req.id }}</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <form action="{{ url_for('admin.action_request', id=req.id) }}" method="POST">
+                                            <div class="modal-body p-4">
+                                                <div class="row g-3 mb-4">
+                                                    <div class="col-md-4">
+                                                        <span class="text-muted d-block small">Requested By</span>
+                                                        <strong>{{ req.requested_by.full_name if req.requested_by.full_name else req.requested_by.username }}</strong>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <span class="text-muted d-block small">Request Type & Module</span>
+                                                        <span class="badge {% if req.request_type == 'Edit' %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ req.request_type }}</span>
+                                                        <strong>{{ req.module }}</strong>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <span class="text-muted d-block small">Submitted At</span>
+                                                        <strong>{{ req.created_at.strftime('%Y-%m-%d %H:%M') }}</strong>
+                                                    </div>
+                                                </div>
+
+                                                <div class="mb-4">
+                                                    <span class="text-muted d-block small font-weight-bold">Reason Provided by Coordinator</span>
+                                                    <div class="p-3 bg-light rounded text-dark border-start border-warning border-3">
+                                                        {{ req.reason }}
+                                                    </div>
+                                                </div>
+
+                                                <!-- Comparison / Info Box -->
+                                                {% if req.request_type == 'Edit' %}
+                                                    {% set proposed = json.loads(req.temporary_edit_payload) %}
+                                                    {% if req.module == 'Fee' %}
+                                                        {% set current_val = fee_records[req.record_id] %}
+                                                        <div class="card mb-4 border-0 bg-light">
+                                                            <div class="card-body">
+                                                                <h6 class="fw-bold mb-3">Proposed Value Modifications (Fee Voucher #{{ req.record_id }})</h6>
+                                                                <table class="table table-bordered table-sm align-middle mb-0 bg-white">
+                                                                    <thead class="table-light">
+                                                                        <tr>
+                                                                            <th>Field</th>
+                                                                            <th>Current Value</th>
+                                                                            <th>Proposed Value</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        <tr>
+                                                                            <td><strong>Amount</strong></td>
+                                                                            <td class="text-muted">Rs. {{ "%.2f"|format(current_val.amount_paid) }}</td>
+                                                                            <td class="text-success fw-bold">Rs. {{ "%.2f"|format(proposed.amount_paid) }}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td><strong>Payment Method</strong></td>
+                                                                            <td class="text-muted">{{ current_val.payment_method }}</td>
+                                                                            <td class="text-primary fw-bold">{{ proposed.payment_method }}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td><strong>Date</strong></td>
+                                                                            <td class="text-muted">{{ current_val.date_collected.strftime('%Y-%m-%d') }}</td>
+                                                                            <td class="text-primary fw-bold">{{ proposed.date_collected }}</td>
+                                                                        </tr>
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        </div>
+                                                    {% elif req.module == 'Expense' %}
+                                                        {% set current_val = expense_records[req.record_id] %}
+                                                        <div class="card mb-4 border-0 bg-light">
+                                                            <div class="card-body">
+                                                                <h6 class="fw-bold mb-3">Proposed Value Modifications (Expense Voucher #{{ req.record_id }})</h6>
+                                                                <table class="table table-bordered table-sm align-middle mb-0 bg-white">
+                                                                    <thead class="table-light">
+                                                                        <tr>
+                                                                            <th>Field</th>
+                                                                            <th>Current Value</th>
+                                                                            <th>Proposed Value</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        <tr>
+                                                                            <td><strong>Title</strong></td>
+                                                                            <td class="text-muted">{{ current_val.title }}</td>
+                                                                            <td class="text-success fw-bold">{{ proposed.title }}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td><strong>Amount</strong></td>
+                                                                            <td class="text-muted">Rs. {{ "%.2f"|format(current_val.amount) }}</td>
+                                                                            <td class="text-danger fw-bold">Rs. {{ "%.2f"|format(proposed.amount) }}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td><strong>Payment Method</strong></td>
+                                                                            <td class="text-muted">{{ current_val.payment_method }}</td>
+                                                                            <td class="text-primary fw-bold">{{ proposed.payment_method }}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td><strong>Date</strong></td>
+                                                                            <td class="text-muted">{{ current_val.expense_date.strftime('%Y-%m-%d') }}</td>
+                                                                            <td class="text-primary fw-bold">{{ proposed.expense_date }}</td>
+                                                                        </tr>
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        </div>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <!-- Delete Request Details -->
+                                                    <div class="alert alert-danger">
+                                                        <strong><i class="bi bi-trash"></i> Confirm Soft Deletion:</strong> Deleting Voucher #{{ req.record_id }} will remove it from dashboards and financial sheets while preserving audit trail references.
+                                                    </div>
+                                                {% endif %}
+
+                                                <!-- Admin Notes Input -->
+                                                <div class="mb-3">
+                                                    <label for="admin_notes_{{ req.id }}" class="form-label font-weight-bold">Admin Action Remarks / Notes</label>
+                                                    <textarea class="form-control" id="admin_notes_{{ req.id }}" name="admin_notes" rows="2" placeholder="Write any notes regarding approval or rejection decision..."></textarea>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                                <button type="submit" name="action" value="Reject" class="btn btn-danger"><i class="bi bi-x-circle"></i> Reject Request</button>
+                                                <button type="submit" name="action" value="Approve" class="btn btn-success"><i class="bi bi-check-circle"></i> Approve & Apply</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% else %}
+                            <tr>
+                                <td colspan="8" class="text-center py-4 text-muted">No pending workflow requests found.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- History Tab -->
+    <div class="tab-pane fade" id="history" role="tabpanel" aria-labelledby="history-tab">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Req ID</th>
+                                <th>Type</th>
+                                <th>Module</th>
+                                <th>Record ID</th>
+                                <th>Requested By</th>
+                                <th>Reason</th>
+                                <th>Status</th>
+                                <th>Processed By</th>
+                                <th>Date Processed</th>
+                                <th>Admin Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for req in history_requests %}
+                            <tr>
+                                <td>#{{ req.id }}</td>
+                                <td>
+                                    <span class="badge {% if req.request_type == 'Edit' %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                                        {{ req.request_type }}
+                                    </span>
+                                </td>
+                                <td><strong>{{ req.module }}</strong></td>
+                                <td>#{{ req.record_id }}</td>
+                                <td>{{ req.requested_by.full_name if req.requested_by.full_name else req.requested_by.username }}</td>
+                                <td><span class="text-truncate d-inline-block" style="max-width: 150px;" title="{{ req.reason }}">{{ req.reason }}</span></td>
+                                <td>
+                                    <span class="badge {% if req.status == 'Approved' %}bg-success{% else %}bg-danger{% endif %}">
+                                        {{ req.status }}
+                                    </span>
+                                </td>
+                                <td>{{ req.actioned_by.username if req.actioned_by else '-' }}</td>
+                                <td>{{ req.actioned_at.strftime('%Y-%m-%d %H:%M') if req.actioned_at else '-' }}</td>
+                                <td><small class="text-muted">{{ req.admin_notes if req.admin_notes else '-' }}</small></td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="10" class="text-center py-4 text-muted">No historical request workflows found.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,531 @@
+import json
+from datetime import datetime, date
+from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask_login import login_required, current_user
+from extensions import db
+from models import Course, Student, FeeCollection, Expense, Attendance, ApprovalRequest, ClassSession
+from helpers import log_audit
+
+coordinator_bp = Blueprint('coordinator', __name__)
+
+# --- Student Registry ---
+@coordinator_bp.route('/students', methods=['GET', 'POST'])
+@login_required
+def students():
+    if request.method == 'POST':
+        full_name = request.form.get('full_name')
+        father_name = request.form.get('father_name')
+        phone = request.form.get('phone')
+        address = request.form.get('address')
+        qualification = request.form.get('qualification')
+        profession = request.form.get('profession')
+        cnic = request.form.get('cnic')
+        
+        course_id_str = request.form.get('course_id')
+        course_id = int(course_id_str) if (course_id_str and course_id_str.isdigit()) else None
+        
+        if current_user.role == 'Coordinator':
+            managed_course = Course.query.filter_by(id=course_id, coordinator_id=current_user.id).first()
+            if not managed_course:
+                flash('Access denied! You cannot enroll students in this course.', 'danger')
+                return redirect(url_for('coordinator.students'))
+        
+        enrollment_date_str = request.form.get('enrollment_date')
+        if enrollment_date_str:
+            enrollment_date = datetime.strptime(enrollment_date_str, '%Y-%m-%d')
+        else:
+            enrollment_date = datetime.utcnow()
+
+        last_student = Student.query.order_by(Student.id.desc()).first()
+        if last_student and last_student.registration_id.isdigit():
+            new_reg_id = str(int(last_student.registration_id) + 1)
+        else:
+            new_reg_id = "1001"
+        
+        new_student = Student(
+            registration_id=new_reg_id,
+            full_name=full_name,
+            father_name=father_name,
+            phone=phone,
+            address=address,
+            qualification=qualification,
+            profession=profession,
+            cnic=cnic,
+            course_id=course_id,
+            enrollment_date=enrollment_date
+        )
+        db.session.add(new_student)
+        db.session.commit()
+        log_audit('Create', 'Student', record_id=new_student.id, remarks=f'Registered student: {full_name} (Reg ID: {new_reg_id})')
+        flash(f'Student added successfully! Reg ID: {new_reg_id}', 'success')
+        return redirect(url_for('coordinator.students'))
+        
+    selected_course_id = request.args.get('course_id')
+    
+    if current_user.role == 'Coordinator':
+        assigned_courses = Course.query.filter_by(coordinator_id=current_user.id).all()
+        assigned_course_ids = [c.id for c in assigned_courses]
+        if not assigned_course_ids:
+            all_students = []
+            selected_course_id = None
+        else:
+            if selected_course_id == 'all':
+                c_filter = None
+            elif selected_course_id and selected_course_id.isdigit() and int(selected_course_id) in assigned_course_ids:
+                c_filter = int(selected_course_id)
+            else:
+                c_filter = assigned_course_ids[0]
+                selected_course_id = str(c_filter)
+                
+            if c_filter:
+                all_students = Student.query.filter_by(course_id=c_filter).order_by(Student.registration_id.desc()).all()
+            else:
+                all_students = Student.query.filter(Student.course_id.in_(assigned_course_ids)).order_by(Student.registration_id.desc()).all()
+        courses_list = assigned_courses
+    else:
+        c_filter = int(selected_course_id) if selected_course_id and selected_course_id.isdigit() else None
+        if c_filter:
+            all_students = Student.query.filter_by(course_id=c_filter).order_by(Student.registration_id.desc()).all()
+        else:
+            all_students = Student.query.order_by(Student.registration_id.desc()).all()
+            selected_course_id = 'all'
+        courses_list = Course.query.filter_by(status='Active').all()
+        
+    return render_template('students.html', students=all_students, courses=courses_list, selected_course_id=selected_course_id)
+
+@coordinator_bp.route('/students/edit/<int:id>', methods=['POST'])
+@login_required
+def edit_student(id):
+    student = Student.query.get_or_404(id)
+    
+    if current_user.role == 'Coordinator':
+        if student.course_id:
+            assigned = Course.query.filter_by(id=student.course_id, coordinator_id=current_user.id).first()
+            if not assigned:
+                flash('Access denied!', 'danger')
+                return redirect(url_for('coordinator.students'))
+        else:
+            flash('Access denied!', 'danger')
+            return redirect(url_for('coordinator.students'))
+            
+    old_name = student.full_name
+    student.full_name = request.form.get('full_name')
+    student.father_name = request.form.get('father_name')
+    student.phone = request.form.get('phone')
+    student.address = request.form.get('address')
+    student.qualification = request.form.get('qualification')
+    student.profession = request.form.get('profession')
+    student.cnic = request.form.get('cnic')
+    
+    course_id_str = request.form.get('course_id')
+    course_id = int(course_id_str) if (course_id_str and course_id_str.isdigit()) else None
+    
+    if current_user.role == 'Coordinator' and course_id:
+        assigned = Course.query.filter_by(id=course_id, coordinator_id=current_user.id).first()
+        if not assigned:
+            flash('Access denied! Selected course is not managed by you.', 'danger')
+            return redirect(url_for('coordinator.students'))
+            
+    student.course_id = course_id
+    student.status = request.form.get('status')
+    
+    enrollment_date_str = request.form.get('enrollment_date')
+    if enrollment_date_str:
+        student.enrollment_date = datetime.strptime(enrollment_date_str, '%Y-%m-%d')
+        
+    db.session.commit()
+    log_audit('Update', 'Student', record_id=student.id, remarks=f'Updated student details: {old_name} -> {student.full_name}')
+    flash('Student records updated successfully!', 'success')
+    return redirect(url_for('coordinator.students'))
+
+@coordinator_bp.route('/students/delete/<int:id>', methods=['POST'])
+@login_required
+def delete_student(id):
+    student = Student.query.get_or_404(id)
+    if current_user.role == 'Coordinator':
+        if not student.course_id or not Course.query.filter_by(id=student.course_id, coordinator_id=current_user.id).first():
+            flash('Access denied!', 'danger')
+            return redirect(url_for('coordinator.students'))
+            
+    full_name = student.full_name
+    db.session.delete(student)
+    db.session.commit()
+    log_audit('Delete', 'Student', record_id=id, remarks=f'Permanently deleted student: {full_name}')
+    flash('Student deleted successfully!', 'success')
+    return redirect(url_for('coordinator.students'))
+
+# --- Fees Handling ---
+@coordinator_bp.route('/fees', methods=['GET', 'POST'])
+@login_required
+def fees():
+    if request.method == 'POST':
+        if current_user.role != 'Coordinator':
+            flash('Access denied! Only coordinators can collect fees.', 'danger')
+            return redirect(url_for('coordinator.fees'))
+            
+        registration_id = request.form.get('registration_id')
+        amount_paid = float(request.form.get('amount_paid'))
+        payment_method = request.form.get('payment_method', 'Cash')
+        
+        date_collected_str = request.form.get('date_collected')
+        if date_collected_str:
+            date_collected = datetime.strptime(date_collected_str, '%Y-%m-%d')
+        else:
+            date_collected = datetime.utcnow()
+            
+        student = Student.query.filter_by(registration_id=registration_id, status='Active').first()
+        if not student:
+            flash('Active student with this Registration ID not found!', 'danger')
+            return redirect(url_for('coordinator.fees'))
+            
+        if not student.course_id or not Course.query.filter_by(id=student.course_id, coordinator_id=current_user.id).first():
+            flash('Access denied! You do not manage this student.', 'danger')
+            return redirect(url_for('coordinator.fees'))
+                
+        new_fee = FeeCollection(
+            student_id=student.id, 
+            amount_paid=amount_paid, 
+            payment_method=payment_method,
+            date_collected=date_collected,
+            collected_by_id=current_user.id
+        )
+        db.session.add(new_fee)
+        db.session.commit()
+        
+        log_audit('Create', 'Fee', record_id=new_fee.id, 
+                  new_values={'student_id': student.id, 'amount_paid': amount_paid, 'payment_method': payment_method, 'date_collected': date_collected.strftime('%Y-%m-%d')},
+                  remarks=f'Coordinator created Fee Voucher #{new_fee.id} of Rs. {amount_paid:.2f} for student {student.full_name}')
+                  
+        flash(f'Fee of Rs. {amount_paid:.2f} ({payment_method}) collected from {student.full_name}!', 'success')
+        return redirect(url_for('coordinator.fees'))
+        
+    selected_course_id = request.args.get('course_id')
+
+    if current_user.role == 'Coordinator':
+        assigned_courses = Course.query.filter_by(coordinator_id=current_user.id).all()
+        assigned_course_ids = [c.id for c in assigned_courses]
+        if not assigned_course_ids:
+            all_fees = []
+            active_students = []
+            selected_course_id = None
+        else:
+            if selected_course_id == 'all':
+                c_filter = None
+            elif selected_course_id and selected_course_id.isdigit() and int(selected_course_id) in assigned_course_ids:
+                c_filter = int(selected_course_id)
+            else:
+                c_filter = assigned_course_ids[0]
+                selected_course_id = str(c_filter)
+                
+            if c_filter:
+                all_fees = FeeCollection.query.join(Student).filter(Student.course_id == c_filter, FeeCollection.is_deleted == False).order_by(FeeCollection.date_collected.desc()).all()
+                active_students = Student.query.filter_by(course_id=c_filter, status='Active').all()
+            else:
+                all_fees = FeeCollection.query.join(Student).filter(Student.course_id.in_(assigned_course_ids), FeeCollection.is_deleted == False).order_by(FeeCollection.date_collected.desc()).all()
+                active_students = Student.query.filter(Student.course_id.in_(assigned_course_ids), Student.status=='Active').all()
+        courses_list = assigned_courses
+    else:
+        c_filter = int(selected_course_id) if selected_course_id and selected_course_id.isdigit() else None
+        if c_filter:
+            all_fees = FeeCollection.query.join(Student).filter(Student.course_id == c_filter, FeeCollection.is_deleted == False).order_by(FeeCollection.date_collected.desc()).all()
+            active_students = Student.query.filter_by(course_id=c_filter, status='Active').all()
+        else:
+            all_fees = FeeCollection.query.filter_by(is_deleted=False).order_by(FeeCollection.date_collected.desc()).all()
+            active_students = Student.query.filter_by(status='Active').all()
+            selected_course_id = 'all'
+        courses_list = Course.query.filter_by(status='Active').all()
+        
+    return render_template('fees.html', fees=all_fees, active_students=active_students, courses=courses_list, selected_course_id=selected_course_id)
+
+@coordinator_bp.route('/attendance')
+@login_required
+def attendance():
+    if current_user.role == 'Coordinator':
+        courses = Course.query.filter_by(coordinator_id=current_user.id).all()
+        if len(courses) == 1:
+            return redirect(url_for('coordinator.attendance_course', course_id=courses[0].id))
+    else:
+        courses = Course.query.filter_by(status='Active').all()
+    return render_template('attendance.html', courses=courses, active_course=None)
+
+@coordinator_bp.route('/attendance/<int:course_id>', methods=['GET', 'POST'])
+@login_required
+def attendance_course(course_id):
+    course = Course.query.get_or_404(course_id)
+    if current_user.role == 'Coordinator' and course.coordinator_id != current_user.id:
+        flash('Access denied!', 'danger')
+        return redirect(url_for('coordinator.attendance'))
+        
+    if request.method == 'POST':
+        date_str = request.form.get('date')
+        subject_name = request.form.get('subject_name')
+        
+        session_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        new_session = ClassSession(course_id=course.id, date=session_date, subject_name=subject_name)
+        db.session.add(new_session)
+        db.session.commit()
+        log_audit('Create', 'ClassSession', record_id=new_session.id, remarks=f"Created session for {subject_name} on {date_str}")
+        flash('Session created successfully!', 'success')
+        return redirect(url_for('coordinator.attendance_bulk', course_id=course.id, session_id=new_session.id))
+        
+    if current_user.role == 'Coordinator':
+        courses = Course.query.filter_by(coordinator_id=current_user.id).all()
+    else:
+        courses = Course.query.filter_by(status='Active').all()
+        
+    sessions = ClassSession.query.filter_by(course_id=course.id).order_by(ClassSession.date.desc()).all()
+    today_str = date.today().strftime('%Y-%m-%d')
+    return render_template('attendance.html', courses=courses, active_course=course, sessions=sessions, today=today_str, json=json)
+
+@coordinator_bp.route('/attendance/<int:course_id>/<int:session_id>', methods=['GET', 'POST'])
+@login_required
+def attendance_bulk(course_id, session_id):
+    course = Course.query.get_or_404(course_id)
+    session_obj = ClassSession.query.get_or_404(session_id)
+    
+    if session_obj.course_id != course.id:
+        flash('Invalid session!', 'danger')
+        return redirect(url_for('coordinator.attendance_course', course_id=course.id))
+        
+    if current_user.role == 'Coordinator' and course.coordinator_id != current_user.id:
+        flash('Access denied!', 'danger')
+        return redirect(url_for('coordinator.attendance'))
+        
+    students = Student.query.filter_by(course_id=course.id, status='Active').all()
+    
+    if request.method == 'POST':
+        for s in students:
+            status = request.form.get(f'status_{s.id}')
+            if status:
+                existing = Attendance.query.filter_by(session_id=session_obj.id, student_id=s.id).first()
+                if existing:
+                    existing.status = status
+                else:
+                    new_att = Attendance(session_id=session_obj.id, student_id=s.id, status=status)
+                    db.session.add(new_att)
+        db.session.commit()
+        log_audit('Update', 'Attendance', remarks=f"Bulk attendance updated for Session ID {session_obj.id}")
+        flash('Attendance saved successfully!', 'success')
+        return redirect(url_for('coordinator.attendance_course', course_id=course.id))
+        
+    existing_attendance = Attendance.query.filter_by(session_id=session_obj.id).all()
+    attendance_map = {att.student_id: att.status for att in existing_attendance}
+    
+    return render_template('attendance_bulk.html', course=course, session_obj=session_obj, students=students, attendance_map=attendance_map)
+
+@coordinator_bp.route('/edit_session/<int:session_id>', methods=['POST'])
+@login_required
+def edit_session(session_id):
+    session_obj = ClassSession.query.get_or_404(session_id)
+    course = Course.query.get(session_obj.course_id)
+    
+    if current_user.role == 'Coordinator' and course.coordinator_id != current_user.id:
+        flash('Access denied!', 'danger')
+        return redirect(url_for('coordinator.attendance_course', course_id=course.id))
+        
+    new_date_str = request.form.get('date')
+    new_subject = request.form.get('subject_name')
+    
+    if new_date_str:
+        session_obj.date = datetime.strptime(new_date_str, '%Y-%m-%d').date()
+    if new_subject:
+        session_obj.subject_name = new_subject
+        
+    db.session.commit()
+    log_audit('Update', 'ClassSession', record_id=session_id, remarks=f"Updated session {session_id} to {new_subject} on {new_date_str}")
+    flash('Session updated successfully!', 'success')
+    return redirect(url_for('coordinator.attendance_course', course_id=course.id))
+
+@coordinator_bp.route('/delete_session/<int:session_id>', methods=['POST'])
+@login_required
+def delete_session(session_id):
+    session_obj = ClassSession.query.get_or_404(session_id)
+    course = Course.query.get(session_obj.course_id)
+    
+    if current_user.role == 'Coordinator' and course.coordinator_id != current_user.id:
+        flash('Access denied!', 'danger')
+        return redirect(url_for('coordinator.attendance_course', course_id=course.id))
+        
+    db.session.delete(session_obj)
+    db.session.commit()
+    log_audit('Delete', 'ClassSession', record_id=session_id, remarks=f"Deleted session {session_id}")
+    flash('Session and all associated attendance records deleted successfully!', 'success')
+    return redirect(url_for('coordinator.attendance_course', course_id=course.id))
+
+# --- Expenses Tracking ---
+@coordinator_bp.route('/expenses', methods=['GET', 'POST'])
+@login_required
+def expenses():
+    if request.method == 'POST':
+        title = request.form.get('title')
+        if title == 'Other':
+            title = request.form.get('custom_title')
+            
+        amount = float(request.form.get('amount'))
+        payment_method = request.form.get('payment_method', 'Cash')
+        
+        course_id_str = request.form.get('course_id')
+        course_id = int(course_id_str) if (course_id_str and course_id_str.isdigit()) else None
+        
+        if current_user.role == 'Coordinator':
+            if not course_id or not Course.query.filter_by(id=course_id, coordinator_id=current_user.id).first():
+                flash('Access denied! You must select an active course assigned to you.', 'danger')
+                return redirect(url_for('coordinator.expenses'))
+                
+        expense_date_str = request.form.get('expense_date')
+        if expense_date_str:
+            expense_date = datetime.strptime(expense_date_str, '%Y-%m-%d')
+        else:
+            expense_date = datetime.utcnow()
+            
+        new_expense = Expense(
+            title=title, 
+            amount=amount,
+            payment_method=payment_method,
+            course_id=course_id,
+            expense_date=expense_date
+        )
+        db.session.add(new_expense)
+        db.session.commit()
+        
+        log_audit('Create', 'Expense', record_id=new_expense.id,
+                  new_values={'title': title, 'amount': amount, 'payment_method': payment_method, 'course_id': course_id, 'expense_date': expense_date.strftime('%Y-%m-%d')},
+                  remarks=f'Coordinator created Expense Voucher #{new_expense.id}: {title} of Rs. {amount:.2f}')
+                  
+        flash('Expense recorded successfully!', 'success')
+        return redirect(url_for('coordinator.expenses'))
+        
+    selected_course_id = request.args.get('course_id')
+
+    if current_user.role == 'Coordinator':
+        assigned_courses = Course.query.filter_by(coordinator_id=current_user.id).all()
+        assigned_course_ids = [c.id for c in assigned_courses]
+        if not assigned_course_ids:
+            all_expenses = []
+            selected_course_id = None
+        else:
+            if selected_course_id == 'all':
+                c_filter = None
+            elif selected_course_id and selected_course_id.isdigit() and int(selected_course_id) in assigned_course_ids:
+                c_filter = int(selected_course_id)
+            else:
+                c_filter = assigned_course_ids[0]
+                selected_course_id = str(c_filter)
+                
+            if c_filter:
+                all_expenses = Expense.query.filter_by(course_id=c_filter, is_deleted=False).order_by(Expense.expense_date.desc()).all()
+            else:
+                all_expenses = Expense.query.filter(Expense.course_id.in_(assigned_course_ids), Expense.is_deleted == False).order_by(Expense.expense_date.desc()).all()
+        courses_list = assigned_courses
+    else:
+        c_filter = int(selected_course_id) if selected_course_id and selected_course_id.isdigit() else None
+        if c_filter:
+            all_expenses = Expense.query.filter_by(course_id=c_filter, is_deleted=False).order_by(Expense.expense_date.desc()).all()
+        else:
+            all_expenses = Expense.query.filter_by(is_deleted=False).order_by(Expense.expense_date.desc()).all()
+            selected_course_id = 'all'
+        courses_list = Course.query.filter_by(status='Active').all()
+        
+    return render_template('expenses.html', expenses=all_expenses, courses=courses_list, selected_course_id=selected_course_id)
+
+# --- Approval Requests ---
+@coordinator_bp.route('/request_edit', methods=['POST'])
+@login_required
+def request_edit():
+    if current_user.role != 'Coordinator':
+        flash('Access denied!', 'danger')
+        return redirect(url_for('dashboard.index'))
+        
+    module = request.form.get('module')
+    record_id = int(request.form.get('record_id'))
+    reason = request.form.get('reason')
+    comments = request.form.get('comments', '')
+    
+    payload = {}
+    if module == 'Fee':
+        payload = {
+            'amount_paid': float(request.form.get('amount_paid')),
+            'payment_method': request.form.get('payment_method'),
+            'date_collected': request.form.get('date_collected')
+        }
+        record = FeeCollection.query.filter_by(id=record_id, is_deleted=False).first_or_404()
+    elif module == 'Expense':
+        payload = {
+            'title': request.form.get('title'),
+            'amount': float(request.form.get('amount')),
+            'payment_method': request.form.get('payment_method'),
+            'course_id': int(request.form.get('course_id')) if request.form.get('course_id') else None,
+            'expense_date': request.form.get('expense_date')
+        }
+        record = Expense.query.filter_by(id=record_id, is_deleted=False).first_or_404()
+    else:
+        flash('Invalid module!', 'danger')
+        return redirect(url_for('dashboard.index'))
+        
+    new_req = ApprovalRequest(
+        request_type='Edit',
+        module=module,
+        record_id=record_id,
+        requested_by_id=current_user.id,
+        reason=reason,
+        comments=comments,
+        temporary_edit_payload=json.dumps(payload),
+        status='Pending'
+    )
+    db.session.add(new_req)
+    db.session.commit()
+    
+    log_audit('Request Edit', module, record_id=record_id, new_values=payload, remarks=f'Edit request submitted: {reason}')
+    
+    flash(f'{module} edit request submitted for approval.', 'success')
+    return redirect(url_for('coordinator.fees' if module == 'Fee' else 'coordinator.expenses'))
+
+@coordinator_bp.route('/request_delete', methods=['POST'])
+@login_required
+def request_delete():
+    if current_user.role != 'Coordinator':
+        flash('Access denied!', 'danger')
+        return redirect(url_for('dashboard.index'))
+        
+    module = request.form.get('module')
+    record_id = int(request.form.get('record_id'))
+    reason = request.form.get('reason')
+    
+    if module == 'Fee':
+        record = FeeCollection.query.filter_by(id=record_id, is_deleted=False).first_or_404()
+    elif module == 'Expense':
+        record = Expense.query.filter_by(id=record_id, is_deleted=False).first_or_404()
+    else:
+        flash('Invalid module!', 'danger')
+        return redirect(url_for('dashboard.index'))
+        
+    new_req = ApprovalRequest(
+        request_type='Delete',
+        module=module,
+        record_id=record_id,
+        requested_by_id=current_user.id,
+        reason=reason,
+        status='Pending'
+    )
+    db.session.add(new_req)
+    db.session.commit()
+    
+    log_audit('Request Delete', module, record_id=record_id, remarks=f'Delete request submitted. Reason: {reason}')
+    
+    flash(f'{module} delete request submitted for approval.', 'success')
+    return redirect(url_for('coordinator.fees' if module == 'Fee' else 'coordinator.expenses'))
+
+@coordinator_bp.route('/my_requests')
+@login_required
+def view_my_requests():
+    if current_user.role != 'Coordinator':
+        flash('Access denied!', 'danger')
+        return redirect(url_for('dashboard.index'))
+        
+    requests_list = ApprovalRequest.query.filter_by(requested_by_id=current_user.id).order_by(ApprovalRequest.created_at.desc()).all()
+    
+    # Pre-load records for context
+    fee_records = {f.id: f for f in FeeCollection.query.all()}
+    expense_records = {e.id: e for e in Expense.query.all()}
+    
+    return render_template('coordinator_requests.html', requests=requests_list, fee_records=fee_records, expense_records=expense_records, json=json)

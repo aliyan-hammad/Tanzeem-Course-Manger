@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 class="mb-4">System Audit Trail Log</h2>
+
+<!-- Filter Section -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('admin.view_audit_logs') }}" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label for="action_type" class="form-label fw-bold">Filter by Action</label>
+                <select class="form-select" id="action_type" name="action_type">
+                    <option value="" {% if not action_filter %}selected{% endif %}>All Actions</option>
+                    <option value="Create" {% if action_filter == 'Create' %}selected{% endif %}>Create (Insert)</option>
+                    <option value="Request Edit" {% if action_filter == 'Request Edit' %}selected{% endif %}>Request Edit</option>
+                    <option value="Request Delete" {% if action_filter == 'Request Delete' %}selected{% endif %}>Request Delete</option>
+                    <option value="Update" {% if action_filter == 'Update' %}selected{% endif %}>Update (Edit Applied)</option>
+                    <option value="Soft Delete" {% if action_filter == 'Soft Delete' %}selected{% endif %}>Soft Delete</option>
+                    <option value="Login" {% if action_filter == 'Login' %}selected{% endif %}>User Logins</option>
+                    <option value="Logout" {% if action_filter == 'Logout' %}selected{% endif %}>User Logouts</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="module" class="form-label fw-bold">Filter by Module</label>
+                <select class="form-select" id="module" name="module">
+                    <option value="" {% if not module_filter %}selected{% endif %}>All Modules</option>
+                    <option value="Fee" {% if module_filter == 'Fee' %}selected{% endif %}>Fee Collections</option>
+                    <option value="Expense" {% if module_filter == 'Expense' %}selected{% endif %}>Expenses</option>
+                    <option value="Auth" {% if module_filter == 'Auth' %}selected{% endif %}>Authentication</option>
+                    <option value="Student" {% if module_filter == 'Student' %}selected{% endif %}>Students</option>
+                    <option value="Course" {% if module_filter == 'Course' %}selected{% endif %}>Courses</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary flex-fill"><i class="bi bi-filter"></i> Apply Filters</button>
+                    <a href="{{ url_for('admin.view_audit_logs') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-counterclockwise"></i> Reset</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Logs Table -->
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 15%;">Timestamp</th>
+                        <th style="width: 15%;">User Account</th>
+                        <th style="width: 12%;">Role</th>
+                        <th style="width: 12%;">Action</th>
+                        <th style="width: 10%;">Module</th>
+                        <th style="width: 8%;">Ref ID</th>
+                        <th>Remarks / Modifications Summary</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td class="small">{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                        <td>
+                            <strong>{{ log.user.username if log.user else 'System' }}</strong>
+                            {% if log.user and log.user.full_name %}
+                            <span class="text-muted d-block small">{{ log.user.full_name }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge {% if log.role == 'Admin' %}bg-dark{% else %}bg-secondary{% endif %}">
+                                {{ log.role }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge {% if log.action_type == 'Create' %}bg-success{% elif 'Request' in log.action_type %}bg-warning text-dark{% elif log.action_type == 'Update' %}bg-info{% elif 'Delete' in log.action_type %}bg-danger{% else %}bg-secondary{% endif %}">
+                                {{ log.action_type }}
+                            </span>
+                        </td>
+                        <td><strong>{{ log.module }}</strong></td>
+                        <td>
+                            {% if log.record_id %}
+                            <span class="badge bg-light text-dark border">#{{ log.record_id }}</span>
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="text-dark small fw-semibold">{{ log.remarks }}</div>
+                            
+                            <!-- Modifications detail toggle if values exist -->
+                            {% if log.old_values or log.new_values %}
+                            <div class="mt-2 text-xxs">
+                                <a class="text-decoration-none text-primary" data-bs-toggle="collapse" href="#collapsedLog{{ log.id }}" role="button" aria-expanded="false" aria-controls="collapsedLog{{ log.id }}">
+                                    <i class="bi bi-chevron-down"></i> View Value Details
+                                </a>
+                                <div class="collapse mt-2" id="collapsedLog{{ log.id }}">
+                                    <div class="p-3 bg-light rounded border">
+                                        <div class="row">
+                                            {% if log.old_values %}
+                                            <div class="col-md-6 border-end">
+                                                <span class="fw-bold d-block text-muted mb-1 text-uppercase">Previous Values</span>
+                                                <code class="text-dark">{{ log.old_values }}</code>
+                                            </div>
+                                            {% endif %}
+                                            {% if log.new_values %}
+                                            <div class="col-md-6">
+                                                <span class="fw-bold d-block text-muted mb-1 text-uppercase">New / Proposed Values</span>
+                                                <code class="text-dark">{{ log.new_values }}</code>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">No audit trail records matched the criteria.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+.text-xxs {
+    font-size: 0.75rem;
+}
+</style>
+{% endblock %}
