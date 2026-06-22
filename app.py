@@ -1,12 +1,21 @@
+import os
 from flask import Flask
 from extensions import db, login_manager
 from werkzeug.security import generate_password_hash
 import models  # Triggers model registration and login manager callbacks
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def create_app():
     app = Flask(__name__)
-    app.config['SECRET_KEY'] = 'your-secret-key-here'  # Change this in production
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///tanzeem.db'
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-here')
+    
+    database_url = os.environ.get('DATABASE_URL', 'sqlite:///tanzeem.db')
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+        
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
     # Initialize extensions
