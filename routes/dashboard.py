@@ -237,36 +237,28 @@ def index():
         if end_date:
             admin_chart_session_q = admin_chart_session_q.filter(ClassSession.date <= end_date.date())
             
-        recent_sessions = admin_chart_session_q.order_by(ClassSession.date.desc()).all()
-        unique_dates = []
-        seen_dates = set()
-        for s in recent_sessions:
-            if s.date not in seen_dates:
-                unique_dates.append(s.date)
-                seen_dates.add(s.date)
-            # Only limit to 14 if no date filters are applied
-            if not start_date and not end_date and len(unique_dates) == 14:
-                break
-                
-        unique_dates.reverse()
+        # Session-wise Attendance Trend (Last 15 Sessions or filtered)
+        if not start_date and not end_date:
+            recent_sessions = admin_chart_session_q.order_by(ClassSession.date.desc(), ClassSession.id.desc()).limit(15).all()
+        else:
+            recent_sessions = admin_chart_session_q.order_by(ClassSession.date.desc(), ClassSession.id.desc()).all()
+            
+        # Reverse to chronological order for the chart (left to right)
+        recent_sessions.reverse()
+        
         daily_chart_dates = []
         daily_chart_percentages = []
         
-        for d in unique_dates:
-            daily_chart_dates.append(d.strftime('%b %d'))
-            day_sessions = admin_chart_session_q.filter(ClassSession.date == d).all()
-            day_session_ids = [s.id for s in day_sessions]
+        for s in recent_sessions:
+            subject_short = s.subject_name[:12] + '...' if len(s.subject_name) > 12 else s.subject_name
+            label = f"{s.date.strftime('%b %d')} ({subject_short})"
+            daily_chart_dates.append(label)
             
-            if day_session_ids:
-                total_records = Attendance.query.filter(Attendance.session_id.in_(day_session_ids)).count()
-                present_records = Attendance.query.filter(
-                    Attendance.session_id.in_(day_session_ids), 
-                    Attendance.status == 'Present'
-                ).count()
-                perc = (present_records / total_records * 100) if total_records > 0 else 0
-                daily_chart_percentages.append(round(perc, 1))
-            else:
-                daily_chart_percentages.append(0)
+            total_records = Attendance.query.filter_by(session_id=s.id).count()
+            present_records = Attendance.query.filter_by(session_id=s.id, status='Present').count()
+            
+            perc = (present_records / total_records * 100) if total_records > 0 else 0
+            daily_chart_percentages.append(round(perc, 1))
                 
         return render_template('dashboard.html', 
                                total_active_students=total_active_students,
