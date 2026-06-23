@@ -312,6 +312,7 @@
                                 <th class="text-center">Present Days</th>
                                 <th class="text-center">Absent Days</th>
                                 <th class="text-center">Leave Days</th>
+                                <th class="text-center">Total Sessions</th>
                                 <th class="text-center">Attendance %</th>
                             </tr>
                         </thead>
@@ -324,6 +325,7 @@
                                 <td class="text-center text-success fw-bold">{{ stat.present }}</td>
                                 <td class="text-center text-danger fw-bold">{{ stat.absent }}</td>
                                 <td class="text-center text-warning fw-bold">{{ stat.leave }}</td>
+                                <td class="text-center text-primary fw-bold">{{ stat.calc.total }}</td>
                                 <td class="text-center fw-bold">
                                     {% set perc = stat.calc.percentage %}
                                     <span class="{% if perc >= 75 %}text-success{% else %}text-danger{% endif %}">{{ stat.calc.formatted }}</span>
@@ -331,7 +333,7 @@
                             </tr>
                             {% else %}
                             <tr>
-                                <td colspan="7" class="text-center py-4">No attendance registries recorded within this date range.</td>
+                                <td colspan="8" class="text-center py-4">No attendance registries recorded within this date range.</td>
                             </tr>
                             {% endfor %}
                         </tbody>

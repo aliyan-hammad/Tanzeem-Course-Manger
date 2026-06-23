@@ -178,20 +178,66 @@
             <div class="card-body p-0">
                 <ul class="nav nav-tabs nav-fill bg-light border-bottom-0" id="irregularitiesTab" role="tablist">
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link active text-danger fw-bold" id="today-absent-tab" data-bs-toggle="tab" data-bs-target="#today-absent" type="button" role="tab"><i class="bi bi-calendar-x"></i> Today's Absentees ({{ today_absentees|length }})</button>
+                        <button class="nav-link active text-danger fw-bold" id="yesterday-absent-tab" data-bs-toggle="tab" data-bs-target="#yesterday-absent" type="button" role="tab"><i class="bi bi-calendar-minus"></i> Yesterday's Absentees ({{ yesterdays_absentees|length }})</button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link text-warning fw-bold" id="consec-absent-tab" data-bs-toggle="tab" data-bs-target="#consec-absent" type="button" role="tab"><i class="bi bi-person-x"></i> Absent > 2 Days ({{ consecutive_absences|length }})</button>
+                        <button class="nav-link text-danger fw-bold" id="today-absent-tab" data-bs-toggle="tab" data-bs-target="#today-absent" type="button" role="tab"><i class="bi bi-calendar-x"></i> Today's Absentees ({{ today_absentees|length }})</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link text-warning fw-bold" id="consec-absent-tab" data-bs-toggle="tab" data-bs-target="#consec-absent" type="button" role="tab"><i class="bi bi-person-x"></i> Consecutive Absences ({{ consecutive_absences|length }})</button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link text-secondary fw-bold" id="low-att-tab" data-bs-toggle="tab" data-bs-target="#low-att" type="button" role="tab"><i class="bi bi-graph-down"></i> At Risk < 70% ({{ low_attendance|length }})</button>
                     </li>
                 </ul>
                 <div class="tab-content p-3" id="irregularitiesTabContent">
-                    <!-- Tab 1 -->
-                    <div class="tab-pane fade show active" id="today-absent" role="tabpanel">
-                        <div class="table-responsive">
-                            <table class="table align-middle mb-0">
+                    <!-- Tab Yesterday -->
+                    <div class="tab-pane fade show active" id="yesterday-absent" role="tabpanel">
+                        <div class="d-flex justify-content-end mb-2 p-2 pb-0">
+                            <button class="btn btn-sm btn-outline-danger me-2" onclick="exportToPDF('yesterday_wrapper', 'Yesterdays_Absentees')"><i class="bi bi-file-pdf"></i> Export PDF</button>
+                            <button class="btn btn-sm btn-outline-success" onclick="exportToExcel('yesterday_table', 'Yesterdays_Absentees')"><i class="bi bi-file-excel"></i> Export Excel</button>
+                        </div>
+                        <div id="yesterday_wrapper">
+                            <div class="table-responsive">
+                                <table class="table align-middle mb-0 bg-white" id="yesterday_table">
+                                    <caption class="html2pdf-title" style="caption-side: top; color: #212529; text-align: left;">
+                                        <h3 class="mb-1 fw-bold">Yesterday's Absentees Report</h3>
+                                        <p class="text-muted small mb-3">Generated on: {{ date.today().strftime('%Y-%m-%d') if date else '' }}</p>
+                                    </caption>
+                                <thead class="table-light"><tr><th>Reg ID</th><th>Name</th><th>Status</th><th>Contact</th></tr></thead>
+                                <tbody>
+                                    {% for rec in yesterdays_absentees %}
+                                    <tr>
+                                        <td>{{ rec.student.registration_id }}</td>
+                                        <td>{{ rec.student.full_name }}</td>
+                                        <td><span class="badge {% if rec.status == 'Absent' %}bg-danger{% else %}bg-warning text-dark{% endif %}">{{ rec.status }}</span></td>
+                                        <td>
+                                            <a href="https://wa.me/92{{ rec.student.phone[1:] if rec.student.phone.startswith('0') else rec.student.phone }}" target="_blank" class="btn btn-sm btn-success rounded-circle"><i class="bi bi-whatsapp"></i></a>
+                                            <a href="tel:{{ rec.student.phone }}" class="btn btn-sm btn-primary rounded-circle"><i class="bi bi-telephone"></i></a>
+                                            <span class="ms-1 small">{{ rec.student.phone }}</span>
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr><td colspan="4" class="text-center text-muted">No students were absent yesterday.</td></tr>
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Tab Today -->
+                    <div class="tab-pane fade" id="today-absent" role="tabpanel">
+                        <div class="d-flex justify-content-end mb-2 p-2 pb-0">
+                            <button class="btn btn-sm btn-outline-danger me-2" onclick="exportToPDF('today_wrapper', 'Todays_Absentees')"><i class="bi bi-file-pdf"></i> Export PDF</button>
+                            <button class="btn btn-sm btn-outline-success" onclick="exportToExcel('today_table', 'Todays_Absentees')"><i class="bi bi-file-excel"></i> Export Excel</button>
+                        </div>
+                        <div id="today_wrapper">
+                            <div class="table-responsive">
+                                <table class="table align-middle mb-0 bg-white" id="today_table">
+                                    <caption class="html2pdf-title" style="caption-side: top; color: #212529; text-align: left;">
+                                        <h3 class="mb-1 fw-bold">Today's Absentees Report</h3>
+                                        <p class="text-muted small mb-3">Generated on: {{ date.today().strftime('%Y-%m-%d') if date else '' }}</p>
+                                    </caption>
                                 <thead class="table-light"><tr><th>Reg ID</th><th>Name</th><th>Status</th><th>Contact</th></tr></thead>
                                 <tbody>
                                     {% for rec in today_absentees %}
@@ -208,14 +254,24 @@
                                     {% else %}
                                     <tr><td colspan="4" class="text-center text-muted">No students are absent today.</td></tr>
                                     {% endfor %}
-                                </tbody>
-                            </table>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                     <!-- Tab 2 -->
                     <div class="tab-pane fade" id="consec-absent" role="tabpanel">
-                        <div class="table-responsive">
-                            <table class="table align-middle mb-0">
+                        <div class="d-flex justify-content-end mb-2 p-2 pb-0">
+                            <button class="btn btn-sm btn-outline-danger me-2" onclick="exportToPDF('consecutive_wrapper', 'Consecutive_Absences')"><i class="bi bi-file-pdf"></i> Export PDF</button>
+                            <button class="btn btn-sm btn-outline-success" onclick="exportToExcel('consecutive_table', 'Consecutive_Absences')"><i class="bi bi-file-excel"></i> Export Excel</button>
+                        </div>
+                        <div id="consecutive_wrapper">
+                            <div class="table-responsive">
+                                <table class="table align-middle mb-0 bg-white" id="consecutive_table">
+                                    <caption class="html2pdf-title" style="caption-side: top; color: #212529; text-align: left;">
+                                        <h3 class="mb-1 fw-bold">Consecutive Absences Report</h3>
+                                        <p class="text-muted small mb-3">Generated on: {{ date.today().strftime('%Y-%m-%d') if date else '' }}</p>
+                                    </caption>
                                 <thead class="table-light"><tr><th>Reg ID</th><th>Name</th><th>Alert</th><th>Contact</th></tr></thead>
                                 <tbody>
                                     {% for stu in consecutive_absences %}
@@ -230,16 +286,26 @@
                                         </td>
                                     </tr>
                                     {% else %}
-                                    <tr><td colspan="4" class="text-center text-muted">No students with 3+ consecutive absences.</td></tr>
+                                    <tr><td colspan="4" class="text-center text-muted">No students with 2+ consecutive absences.</td></tr>
                                     {% endfor %}
-                                </tbody>
-                            </table>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                     <!-- Tab 3 -->
                     <div class="tab-pane fade" id="low-att" role="tabpanel">
-                        <div class="table-responsive">
-                            <table class="table align-middle mb-0">
+                        <div class="d-flex justify-content-end mb-2 p-2 pb-0">
+                            <button class="btn btn-sm btn-outline-danger me-2" onclick="exportToPDF('risk_wrapper', 'At_Risk_Students')"><i class="bi bi-file-pdf"></i> Export PDF</button>
+                            <button class="btn btn-sm btn-outline-success" onclick="exportToExcel('risk_table', 'At_Risk_Students')"><i class="bi bi-file-excel"></i> Export Excel</button>
+                        </div>
+                        <div id="risk_wrapper">
+                            <div class="table-responsive">
+                                <table class="table align-middle mb-0 bg-white" id="risk_table">
+                                    <caption class="html2pdf-title" style="caption-side: top; color: #212529; text-align: left;">
+                                        <h3 class="mb-1 fw-bold">At Risk (< 70%) Students Report</h3>
+                                        <p class="text-muted small mb-3">Generated on: {{ date.today().strftime('%Y-%m-%d') if date else '' }}</p>
+                                    </caption>
                                 <thead class="table-light"><tr><th>Reg ID</th><th>Name</th><th>Attendance</th><th>Contact</th></tr></thead>
                                 <tbody>
                                     {% for item in low_attendance %}
@@ -256,8 +322,9 @@
                                     {% else %}
                                     <tr><td colspan="4" class="text-center text-muted">No students at risk.</td></tr>
                                     {% endfor %}
-                                </tbody>
-                            </table>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -386,17 +453,15 @@ document.addEventListener("DOMContentLoaded", function() {
     const attCtx = document.getElementById('dailyAttendanceChart');
     if (attCtx) {
         new Chart(attCtx.getContext('2d'), {
-            type: 'line',
+            type: 'bar',
             data: {
                 labels: {{ daily_chart_dates|tojson }},
                 datasets: [{
                     label: 'Attendance %',
                     data: {{ daily_chart_percentages|tojson }},
-                    backgroundColor: 'rgba(13, 110, 253, 0.2)',
+                    backgroundColor: 'rgba(13, 110, 253, 0.7)',
                     borderColor: 'rgba(13, 110, 253, 1)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.3
+                    borderWidth: 1
                 }]
             },
             options: {
@@ -412,6 +477,83 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 });
+
+    const adminAccordion = document.getElementById('adminChartsAccordion');
+    if (adminAccordion) {
+        adminAccordion.addEventListener('shown.bs.collapse', function (e) {
+            e.target.parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+    }
+</script>
+</script>
+{% else %}
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+function exportToExcel(tableId, filename) {
+    const table = document.getElementById(tableId);
+    const wb = XLSX.utils.table_to_book(table, { sheet: "Report" });
+    const formattedDate = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `${filename}_${formattedDate}.xlsx`);
+}
+
+function exportToPDF(wrapperId, filename) {
+    const element = document.getElementById(wrapperId);
+    const formattedDate = new Date().toISOString().slice(0, 10);
+    
+    // Open a new snapshot window
+    const printWindow = window.open('', '_blank');
+    
+    // Write pure, conflict-free HTML into the new window
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>${filename} Snapshot</title>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+            <style>
+                body { padding: 30px; background: white; font-family: system-ui, -apple-system, sans-serif; }
+                table { width: 100% !important; border-collapse: collapse !important; margin-bottom: 1rem; }
+                th, td { padding: 12px !important; border-bottom: 1px solid #dee2e6 !important; text-align: left; }
+                th { background-color: #f8f9fa !important; font-weight: bold !important; }
+                a.btn { display: none !important; } /* Strips interactive Whatsapp/Phone buttons */
+                .html2pdf-title { display: table-caption !important; caption-side: top; margin-bottom: 20px; color: #000; }
+                .html2pdf-title h3 { margin: 0 0 5px 0; font-size: 24px; font-weight: bold; }
+                .html2pdf-title p { margin: 0; color: #6c757d; font-size: 14px; }
+            </style>
+        </head>
+        <body>
+            <div id="capture-area">
+                ${element.innerHTML}
+            </div>
+            
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"><\/script>
+            <script>
+                // Wait for the window to fully render the snapshot
+                window.onload = function() {
+                    const opt = {
+                        margin: [10, 10, 10, 10],
+                        filename: '${filename}_${formattedDate}.pdf',
+                        image: { type: 'jpeg', quality: 0.98 },
+                        html2canvas: { scale: 2, useCORS: true },
+                        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+                    };
+                    
+                    const captureArea = document.getElementById('capture-area');
+                    
+                    // Generate PDF, then close snapshot window
+                    html2pdf().set(opt).from(captureArea).save().then(() => {
+                        setTimeout(() => window.close(), 1500);
+                    });
+                };
+            <\/script>
+        </body>
+        </html>
+    `);
+    
+    // Close the document stream so window.onload can fire
+    printWindow.document.close();
+}
 </script>
 {% endif %}
 

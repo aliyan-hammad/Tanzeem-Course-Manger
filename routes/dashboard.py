@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from flask import Blueprint, render_template, request, session
 from flask_login import login_required, current_user
 from extensions import db
@@ -145,6 +145,24 @@ def index():
                     today_absentees.append(rec)
                     seen_students.add(rec.student_id)
                     
+        yesterday_date = today_date - timedelta(days=1)
+        yesterdays_absentees = []
+        yesterday_sessions = ClassSession.query.filter(
+            ClassSession.course_id.in_(assigned_course_ids), 
+            ClassSession.date == yesterday_date
+        ).all()
+        y_session_ids = [s.id for s in yesterday_sessions]
+        if y_session_ids:
+            y_absent_records = Attendance.query.filter(
+                Attendance.session_id.in_(y_session_ids),
+                Attendance.status.in_(['Absent', 'Leave'])
+            ).all()
+            seen_y_students = set()
+            for rec in y_absent_records:
+                if rec.student_id not in seen_y_students:
+                    yesterdays_absentees.append(rec)
+                    seen_y_students.add(rec.student_id)
+                    
         active_students_list = base_stu_q.all()
         consecutive_absences = []
         low_attendance = []
@@ -156,9 +174,9 @@ def index():
                 
             recent_att = Attendance.query.join(ClassSession).filter(
                 Attendance.student_id == student.id
-            ).order_by(ClassSession.date.desc()).limit(3).all()
+            ).order_by(ClassSession.date.desc()).limit(2).all()
             
-            if len(recent_att) == 3 and all(a.status == 'Absent' for a in recent_att):
+            if len(recent_att) == 2 and all(a.status == 'Absent' for a in recent_att):
                 consecutive_absences.append(student)
                 
         return render_template('dashboard.html', 
@@ -178,6 +196,7 @@ def index():
                                expenses_added=total_expenses,
                                pending_requests_count=pending_requests_count,
                                start_date_str=start_date_str, end_date_str=end_date_str,
+                               yesterdays_absentees=yesterdays_absentees,
                                today_absentees=today_absentees,
                                consecutive_absences=consecutive_absences,
                                low_attendance=low_attendance)
@@ -213,6 +232,11 @@ def index():
             c_id = int(selected_course_id)
             admin_chart_session_q = admin_chart_session_q.filter(ClassSession.course_id == c_id)
             
+        if start_date:
+            admin_chart_session_q = admin_chart_session_q.filter(ClassSession.date >= start_date.date())
+        if end_date:
+            admin_chart_session_q = admin_chart_session_q.filter(ClassSession.date <= end_date.date())
+            
         recent_sessions = admin_chart_session_q.order_by(ClassSession.date.desc()).all()
         unique_dates = []
         seen_dates = set()
@@ -220,7 +244,8 @@ def index():
             if s.date not in seen_dates:
                 unique_dates.append(s.date)
                 seen_dates.add(s.date)
-            if len(unique_dates) == 14:
+            # Only limit to 14 if no date filters are applied
+            if not start_date and not end_date and len(unique_dates) == 14:
                 break
                 
         unique_dates.reverse()
