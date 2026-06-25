@@ -16,10 +16,17 @@ import json
 # We will fill these in once we have both IDs
 ADMIN_SPREADSHEET_ID = '1tWcgbHLmzQ9wWzGUkr9P4ANCxqjr0B3o-ecpfRYze34'
 DAILY_SPREADSHEET_ID = '1VCvZXl-xTo1OEHb9uAMzbyeMgXWkQKM-rhdnmhGHVy8'
-
 def get_gspread_client():
+    import base64
     env_creds = os.environ.get('GOOGLE_CREDENTIALS')
     if env_creds:
+        # If it doesn't look like JSON, assume it is Base64 encoded to bypass Vercel newline mangling
+        if not env_creds.strip().startswith('{'):
+            try:
+                env_creds = base64.b64decode(env_creds).decode('utf-8')
+            except Exception:
+                pass
+
         creds_dict = json.loads(env_creds, strict=False)
         if 'private_key' in creds_dict:
             # Vercel/Copy-Paste often mangles PEM keys by adding leading spaces or double-escaping newlines.
