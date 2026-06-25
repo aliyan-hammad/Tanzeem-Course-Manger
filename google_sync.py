@@ -21,6 +21,13 @@ def get_gspread_client():
     env_creds = os.environ.get('GOOGLE_CREDENTIALS')
     if env_creds:
         creds_dict = json.loads(env_creds, strict=False)
+        if 'private_key' in creds_dict:
+            # Vercel/Copy-Paste often mangles PEM keys by adding leading spaces or double-escaping newlines.
+            key = creds_dict['private_key']
+            key = key.replace('\\n', '\n')
+            # Clean all leading/trailing whitespace on every line to prevent MalformedFraming errors
+            creds_dict['private_key'] = '\n'.join(line.strip() for line in key.split('\n'))
+        
         creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
     else:
         creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
