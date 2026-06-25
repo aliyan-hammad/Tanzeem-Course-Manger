@@ -11,12 +11,19 @@ SCOPES = [
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 CREDENTIALS_FILE = os.path.join(BASE_DIR, 'credentials.json')
 
+import json
+
 # We will fill these in once we have both IDs
 ADMIN_SPREADSHEET_ID = '1tWcgbHLmzQ9wWzGUkr9P4ANCxqjr0B3o-ecpfRYze34'
 DAILY_SPREADSHEET_ID = '1VCvZXl-xTo1OEHb9uAMzbyeMgXWkQKM-rhdnmhGHVy8'
 
 def get_gspread_client():
-    creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
+    env_creds = os.environ.get('GOOGLE_CREDENTIALS')
+    if env_creds:
+        creds_dict = json.loads(env_creds)
+        creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
+    else:
+        creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
     return gspread.authorize(creds)
 
 def get_or_create_worksheet(spreadsheet, title, headers=None):
