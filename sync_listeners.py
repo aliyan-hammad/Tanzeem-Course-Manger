@@ -6,17 +6,14 @@ from extensions import db
 from flask import current_app
 
 def run_in_background(func, *args, **kwargs):
-    def wrapper():
-        try:
-            func(*args, **kwargs)
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            print(f"Background thread error: {e}")
-            
-    thread = threading.Thread(target=wrapper)
-    thread.daemon = True
-    thread.start()
+    # Vercel serverless functions pause execution after response.
+    # Therefore, we MUST run this synchronously.
+    try:
+        func(*args, **kwargs)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"Background thread error: {e}")
 
 def trigger_sync_fee_month(app, month_str):
     def do_sync():
