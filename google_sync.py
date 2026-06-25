@@ -100,3 +100,26 @@ def sync_daily_coordinator_report(date_str, today_absentees, yesterdays_absentee
         pass
         
     return spreadsheet.url
+
+def sync_entire_month_log(log_type, month_year_str, data_rows):
+    """
+    Overwrites the entire monthly tab for the given log_type.
+    data_rows: list of lists (headers not included, we add them)
+    """
+    gc = get_gspread_client()
+    spreadsheet = gc.open_by_key(ADMIN_SPREADSHEET_ID)
+    
+    tab_name = f"{month_year_str} {log_type}"
+    
+    headers = []
+    if log_type == 'Fees':
+        headers = ["Fee ID", "Student ID", "Student Name", "Course", "Amount Paid", "Payment Method", "Fee Month", "Date Collected"]
+    elif log_type == 'Expenses':
+        headers = ["Expense ID", "Title", "Amount", "Payment Method", "Course", "Expense Date"]
+        
+    worksheet = get_or_create_worksheet(spreadsheet, tab_name, headers)
+    
+    worksheet.clear()
+    rows = [headers] + data_rows
+    worksheet.update('A1', rows)
+    return spreadsheet.url

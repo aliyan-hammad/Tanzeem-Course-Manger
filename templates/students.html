@@ -7,9 +7,7 @@
         <form method="GET" action="{{ url_for('coordinator.students') }}" class="d-flex align-items-center gap-2">
             <label for="course_id" class="text-nowrap fw-bold mb-0">Course:</label>
             <select class="form-select form-select-sm" id="course_id" name="course_id" onchange="this.form.submit()">
-                {% if courses|length != 1 %}
-                <option value="all" {% if selected_course_id == 'all' %}selected{% endif %}>All Courses</option>
-                {% endif %}
+
                 {% for course in courses %}
                 <option value="{{ course.id }}" {% if selected_course_id|string == course.id|string %}selected{% endif %}>{{ course.name }}</option>
                 {% endfor %}
@@ -24,7 +22,7 @@
 <div class="card shadow-sm border-0">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0" id="studentsTable">
                 <thead class="table-light">
                     <tr>
                         <th>Reg ID</th>
@@ -68,7 +66,12 @@
                             </form>
                         </td>
                     </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
+        {% for student in students %}
                     <!-- Edit Student Modal -->
                     <div class="modal fade" id="editStudentModal{{ student.id }}" tabindex="-1" aria-labelledby="editStudentModalLabel{{ student.id }}" aria-hidden="true">
                         <div class="modal-dialog modal-lg">
@@ -145,14 +148,7 @@
                             </div>
                         </div>
                     </div>
-                    {% else %}
-                    <tr>
-                        <td colspan="9" class="text-center py-4">No students found.</td>
-                    </tr>
                     {% endfor %}
-                </tbody>
-            </table>
-        </div>
         
         <!-- Pagination Controls -->
         {% if pagination and pagination.pages > 1 %}
@@ -261,4 +257,27 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<!-- DataTables CSS & JS -->
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css"/>
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script>
+$(document).ready(function() {
+    $('#studentsTable').DataTable({
+        "pageLength": 10,
+        "lengthChange": false,
+        "order": [[ 7, "desc" ]], // Order by Enrollment Date descending
+        "dom": "<'row px-3 pt-3'<'col-sm-12 col-md-6'><'col-sm-12 col-md-6'f>>" +
+               "<'row'<'col-sm-12'tr>>" +
+               "<'row px-3 pb-3 pt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+        "language": {
+            "search": "Search Student:"
+        }
+    });
+});
+</script>
 {% endblock %}

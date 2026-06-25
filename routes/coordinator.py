@@ -64,36 +64,22 @@ def students():
     
     if current_user.role == 'Coordinator':
         assigned_courses = Course.query.filter_by(coordinator_id=current_user.id).all()
-        assigned_course_ids = [c.id for c in assigned_courses]
-        if not assigned_course_ids:
-            all_students = []
-            selected_course_id = None
-        else:
-            if selected_course_id == 'all':
-                c_filter = None
-            elif selected_course_id and selected_course_id.isdigit() and int(selected_course_id) in assigned_course_ids:
-                c_filter = int(selected_course_id)
-            else:
-                c_filter = assigned_course_ids[0]
-                selected_course_id = str(c_filter)
-                
-        page = request.args.get('page', 1, type=int)
-        if c_filter:
-            pagination = Student.query.filter_by(course_id=c_filter).order_by(Student.registration_id.desc()).paginate(page=page, per_page=10, error_out=False)
-        else:
-            pagination = Student.query.filter(Student.course_id.in_(assigned_course_ids)).order_by(Student.registration_id.desc()).paginate(page=page, per_page=10, error_out=False)
         courses_list = assigned_courses
     else:
-        page = request.args.get('page', 1, type=int)
-        c_filter = int(selected_course_id) if selected_course_id and selected_course_id.isdigit() else None
-        if c_filter:
-            pagination = Student.query.filter_by(course_id=c_filter).order_by(Student.registration_id.desc()).paginate(page=page, per_page=10, error_out=False)
-        else:
-            pagination = Student.query.order_by(Student.registration_id.desc()).paginate(page=page, per_page=10, error_out=False)
-            selected_course_id = 'all'
         courses_list = Course.query.filter_by(status='Active').all()
+
+    if not courses_list:
+        return render_template('students.html', students=[], courses=[], selected_course_id=None, pagination=None)
+
+    # Force a valid course selection
+    valid_course_ids = [str(c.id) for c in courses_list]
+    if not selected_course_id or selected_course_id not in valid_course_ids:
+        selected_course_id = valid_course_ids[0]
+
+    c_filter = int(selected_course_id)
+    all_students = Student.query.filter_by(course_id=c_filter).order_by(Student.registration_id.desc()).all()
         
-    return render_template('students.html', pagination=pagination, students=pagination.items, courses=courses_list, selected_course_id=selected_course_id)
+    return render_template('students.html', students=all_students, courses=courses_list, selected_course_id=selected_course_id, pagination=None)
 
 @coordinator_bp.route('/students/edit/<int:id>', methods=['POST'])
 @login_required
@@ -215,62 +201,54 @@ def fees():
         return redirect(url_for('coordinator.fees'))
         
     selected_course_id = request.args.get('course_id')
+    selected_month = request.args.get('fee_month', datetime.now().strftime('%Y-%m'))
 
     if current_user.role == 'Coordinator':
         assigned_courses = Course.query.filter_by(coordinator_id=current_user.id).all()
-        assigned_course_ids = [c.id for c in assigned_courses]
-        if not assigned_course_ids:
-            all_fees = []
-            active_students = []
-            selected_course_id = None
-        else:
-            if selected_course_id == 'all':
-                c_filter = None
-            elif selected_course_id and selected_course_id.isdigit() and int(selected_course_id) in assigned_course_ids:
-                c_filter = int(selected_course_id)
-            else:
-                c_filter = assigned_course_ids[0]
-                selected_course_id = str(c_filter)
-                
-            if c_filter:
-                pagination = FeeCollection.query.join(Student).filter(Student.course_id == c_filter, FeeCollection.is_deleted == False).order_by(FeeCollection.date_collected.desc()).paginate(page=request.args.get('page', 1, type=int), per_page=10, error_out=False)
-                active_students = Student.query.filter_by(course_id=c_filter, status='Active').all()
-            else:
-                pagination = FeeCollection.query.join(Student).filter(Student.course_id.in_(assigned_course_ids), FeeCollection.is_deleted == False).order_by(FeeCollection.date_collected.desc()).paginate(page=request.args.get('page', 1, type=int), per_page=10, error_out=False)
-                active_students = Student.query.filter(Student.course_id.in_(assigned_course_ids), Student.status=='Active').all()
         courses_list = assigned_courses
     else:
-        c_filter = int(selected_course_id) if selected_course_id and selected_course_id.isdigit() else None
-        if c_filter:
-            pagination = FeeCollection.query.join(Student).filter(Student.course_id == c_filter, FeeCollection.is_deleted == False).order_by(FeeCollection.date_collected.desc()).paginate(page=request.args.get('page', 1, type=int), per_page=10, error_out=False)
-            active_students = Student.query.filter_by(course_id=c_filter, status='Active').all()
-        else:
-            pagination = FeeCollection.query.filter_by(is_deleted=False).order_by(FeeCollection.date_collected.desc()).paginate(page=request.args.get('page', 1, type=int), per_page=10, error_out=False)
-            active_students = Student.query.filter_by(status='Active').all()
-            selected_course_id = 'all'
         courses_list = Course.query.filter_by(status='Active').all()
-        
-    return render_template('fees.html', pagination=pagination, fees=pagination.items if 'pagination' in locals() else [], active_students=active_students, courses=courses_list, selected_course_id=selected_course_id)
 
-@coordinator_bp.route('/attendance')
+    if not courses_list:
+        return render_template('fees.html', fees=[], active_students=[], courses=[], selected_course_id=None, selected_month=selected_month, pagination=None)
+
+    valid_course_ids = [str(c.id) for c in courses_list]
+    if not selected_course_id or selected_course_id not in valid_course_ids:
+        selected_course_id = valid_course_ids[0]
+
+    c_filter = int(selected_course_id)
+    
+    all_fees = FeeCollection.query.join(Student).filter(
+        Student.course_id == c_filter, 
+        FeeCollection.is_deleted == False,
+        FeeCollection.fee_month == selected_month
+    ).order_by(FeeCollection.date_collected.desc()).all()
+    
+    active_students = Student.query.filter_by(course_id=c_filter, status='Active').all()
+        
+    return render_template('fees.html', fees=all_fees, active_students=active_students, courses=courses_list, selected_course_id=selected_course_id, selected_month=selected_month, pagination=None)
+
+@coordinator_bp.route('/attendance', methods=['GET', 'POST'])
 @login_required
 def attendance():
     if current_user.role == 'Coordinator':
         courses = Course.query.filter_by(coordinator_id=current_user.id).all()
-        if len(courses) == 1:
-            return redirect(url_for('coordinator.attendance_course', course_id=courses[0].id))
     else:
         courses = Course.query.filter_by(status='Active').all()
-    return render_template('attendance.html', courses=courses, active_course=None)
 
-@coordinator_bp.route('/attendance/<int:course_id>', methods=['GET', 'POST'])
-@login_required
-def attendance_course(course_id):
-    course = Course.query.get_or_404(course_id)
-    if current_user.role == 'Coordinator' and course.coordinator_id != current_user.id:
-        flash('Access denied!', 'danger')
-        return redirect(url_for('coordinator.attendance'))
-        
+    if not courses:
+        flash('No courses assigned or available.', 'warning')
+        return redirect(url_for('coordinator.dashboard'))
+
+    selected_course_id = request.args.get('course_id')
+    if not selected_course_id and request.method == 'GET':
+        selected_course_id = courses[0].id
+    
+    if request.method == 'POST':
+        selected_course_id = request.form.get('course_id')
+
+    course = next((c for c in courses if str(c.id) == str(selected_course_id)), courses[0])
+
     if request.method == 'POST':
         date_str = request.form.get('date')
         subject_name = request.form.get('subject_name')
@@ -283,15 +261,15 @@ def attendance_course(course_id):
         flash('Session created successfully!', 'success')
         return redirect(url_for('coordinator.attendance_bulk', course_id=course.id, session_id=new_session.id))
         
-    if current_user.role == 'Coordinator':
-        courses = Course.query.filter_by(coordinator_id=current_user.id).all()
-    else:
-        courses = Course.query.filter_by(status='Active').all()
-        
-    page = request.args.get('page', 1, type=int)
-    pagination = ClassSession.query.filter_by(course_id=course.id).order_by(ClassSession.date.desc()).paginate(page=page, per_page=10, error_out=False)
-    today_str = date.today().strftime('%Y-%m-%d')
-    return render_template('attendance.html', courses=courses, active_course=course, pagination=pagination, sessions=pagination.items, today=today_str, json=json)
+    session_date_str = request.args.get('date', date.today().strftime('%Y-%m-%d'))
+    try:
+        session_date = datetime.strptime(session_date_str, '%Y-%m-%d').date()
+    except ValueError:
+        session_date = date.today()
+
+    all_sessions = ClassSession.query.filter_by(course_id=course.id, date=session_date).order_by(ClassSession.id.desc()).all()
+    
+    return render_template('attendance.html', courses=courses, active_course=course, sessions=all_sessions, selected_date=session_date_str, today=date.today().strftime('%Y-%m-%d'), json=json, pagination=None)
 
 @coordinator_bp.route('/attendance/<int:course_id>/<int:session_id>', methods=['GET', 'POST'])
 @login_required
@@ -301,7 +279,7 @@ def attendance_bulk(course_id, session_id):
     
     if session_obj.course_id != course.id:
         flash('Invalid session!', 'danger')
-        return redirect(url_for('coordinator.attendance_course', course_id=course.id))
+        return redirect(url_for('coordinator.attendance', course_id=course.id))
         
     if current_user.role == 'Coordinator' and course.coordinator_id != current_user.id:
         flash('Access denied!', 'danger')
@@ -322,7 +300,7 @@ def attendance_bulk(course_id, session_id):
         db.session.commit()
         log_audit('Update', 'Attendance', remarks=f"Bulk attendance updated for Session ID {session_obj.id}")
         flash('Attendance saved successfully!', 'success')
-        return redirect(url_for('coordinator.attendance_course', course_id=course.id))
+        return redirect(url_for('coordinator.attendance', course_id=course.id))
         
     existing_attendance = Attendance.query.filter_by(session_id=session_obj.id).all()
     attendance_map = {att.student_id: att.status for att in existing_attendance}
@@ -337,7 +315,7 @@ def edit_session(session_id):
     
     if current_user.role == 'Coordinator' and course.coordinator_id != current_user.id:
         flash('Access denied!', 'danger')
-        return redirect(url_for('coordinator.attendance_course', course_id=course.id))
+        return redirect(url_for('coordinator.attendance', course_id=course.id))
         
     new_date_str = request.form.get('date')
     new_subject = request.form.get('subject_name')
@@ -350,7 +328,7 @@ def edit_session(session_id):
     db.session.commit()
     log_audit('Update', 'ClassSession', record_id=session_id, remarks=f"Updated session {session_id} to {new_subject} on {new_date_str}")
     flash('Session updated successfully!', 'success')
-    return redirect(url_for('coordinator.attendance_course', course_id=course.id))
+    return redirect(url_for('coordinator.attendance', course_id=course.id))
 
 @coordinator_bp.route('/delete_session/<int:session_id>', methods=['POST'])
 @login_required
@@ -360,13 +338,13 @@ def delete_session(session_id):
     
     if current_user.role == 'Coordinator' and course.coordinator_id != current_user.id:
         flash('Access denied!', 'danger')
-        return redirect(url_for('coordinator.attendance_course', course_id=course.id))
+        return redirect(url_for('coordinator.attendance', course_id=course.id))
         
     db.session.delete(session_obj)
     db.session.commit()
     log_audit('Delete', 'ClassSession', record_id=session_id, remarks=f"Deleted session {session_id}")
     flash('Session and all associated attendance records deleted successfully!', 'success')
-    return redirect(url_for('coordinator.attendance_course', course_id=course.id))
+    return redirect(url_for('coordinator.attendance', course_id=course.id))
 
 # --- Expenses Tracking ---
 @coordinator_bp.route('/expenses', methods=['GET', 'POST'])
@@ -412,37 +390,36 @@ def expenses():
         return redirect(url_for('coordinator.expenses'))
         
     selected_course_id = request.args.get('course_id')
+    selected_month = request.args.get('expense_month', datetime.now().strftime('%Y-%m'))
+    
+    try:
+        target_year, target_month = map(int, selected_month.split('-'))
+    except ValueError:
+        target_year, target_month = datetime.now().year, datetime.now().month
 
     if current_user.role == 'Coordinator':
         assigned_courses = Course.query.filter_by(coordinator_id=current_user.id).all()
-        assigned_course_ids = [c.id for c in assigned_courses]
-        if not assigned_course_ids:
-            all_expenses = []
-            selected_course_id = None
-        else:
-            if selected_course_id == 'all':
-                c_filter = None
-            elif selected_course_id and selected_course_id.isdigit() and int(selected_course_id) in assigned_course_ids:
-                c_filter = int(selected_course_id)
-            else:
-                c_filter = assigned_course_ids[0]
-                selected_course_id = str(c_filter)
-                
-            if c_filter:
-                pagination = Expense.query.filter_by(course_id=c_filter, is_deleted=False).order_by(Expense.expense_date.desc()).paginate(page=request.args.get('page', 1, type=int), per_page=10, error_out=False)
-            else:
-                pagination = Expense.query.filter(Expense.course_id.in_(assigned_course_ids), Expense.is_deleted == False).order_by(Expense.expense_date.desc()).paginate(page=request.args.get('page', 1, type=int), per_page=10, error_out=False)
         courses_list = assigned_courses
     else:
-        c_filter = int(selected_course_id) if selected_course_id and selected_course_id.isdigit() else None
-        if c_filter:
-            pagination = Expense.query.filter_by(course_id=c_filter, is_deleted=False).order_by(Expense.expense_date.desc()).paginate(page=request.args.get('page', 1, type=int), per_page=10, error_out=False)
-        else:
-            pagination = Expense.query.filter_by(is_deleted=False).order_by(Expense.expense_date.desc()).paginate(page=request.args.get('page', 1, type=int), per_page=10, error_out=False)
-            selected_course_id = 'all'
         courses_list = Course.query.filter_by(status='Active').all()
+
+    if not courses_list:
+        return render_template('expenses.html', expenses=[], courses=[], selected_course_id=None, selected_month=selected_month, pagination=None)
+
+    valid_course_ids = [str(c.id) for c in courses_list]
+    if not selected_course_id or selected_course_id not in valid_course_ids:
+        selected_course_id = valid_course_ids[0]
+
+    c_filter = int(selected_course_id)
+    
+    all_expenses = Expense.query.filter(
+        Expense.course_id == c_filter,
+        Expense.is_deleted == False,
+        db.extract('year', Expense.expense_date) == target_year,
+        db.extract('month', Expense.expense_date) == target_month
+    ).order_by(Expense.expense_date.desc()).all()
         
-    return render_template('expenses.html', pagination=pagination, expenses=pagination.items if 'pagination' in locals() else [], courses=courses_list, selected_course_id=selected_course_id)
+    return render_template('expenses.html', expenses=all_expenses, courses=courses_list, selected_course_id=selected_course_id, selected_month=selected_month, pagination=None)
 
 # --- Approval Requests ---
 @coordinator_bp.route('/request_edit', methods=['POST'])
