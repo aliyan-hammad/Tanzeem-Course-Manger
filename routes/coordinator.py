@@ -77,21 +77,23 @@ def students():
                 c_filter = assigned_course_ids[0]
                 selected_course_id = str(c_filter)
                 
-            if c_filter:
-                all_students = Student.query.filter_by(course_id=c_filter).order_by(Student.registration_id.desc()).all()
-            else:
-                all_students = Student.query.filter(Student.course_id.in_(assigned_course_ids)).order_by(Student.registration_id.desc()).all()
+        page = request.args.get('page', 1, type=int)
+        if c_filter:
+            pagination = Student.query.filter_by(course_id=c_filter).order_by(Student.registration_id.desc()).paginate(page=page, per_page=10, error_out=False)
+        else:
+            pagination = Student.query.filter(Student.course_id.in_(assigned_course_ids)).order_by(Student.registration_id.desc()).paginate(page=page, per_page=10, error_out=False)
         courses_list = assigned_courses
     else:
+        page = request.args.get('page', 1, type=int)
         c_filter = int(selected_course_id) if selected_course_id and selected_course_id.isdigit() else None
         if c_filter:
-            all_students = Student.query.filter_by(course_id=c_filter).order_by(Student.registration_id.desc()).all()
+            pagination = Student.query.filter_by(course_id=c_filter).order_by(Student.registration_id.desc()).paginate(page=page, per_page=10, error_out=False)
         else:
-            all_students = Student.query.order_by(Student.registration_id.desc()).all()
+            pagination = Student.query.order_by(Student.registration_id.desc()).paginate(page=page, per_page=10, error_out=False)
             selected_course_id = 'all'
         courses_list = Course.query.filter_by(status='Active').all()
         
-    return render_template('students.html', students=all_students, courses=courses_list, selected_course_id=selected_course_id)
+    return render_template('students.html', pagination=pagination, students=pagination.items, courses=courses_list, selected_course_id=selected_course_id)
 
 @coordinator_bp.route('/students/edit/<int:id>', methods=['POST'])
 @login_required
@@ -231,24 +233,24 @@ def fees():
                 selected_course_id = str(c_filter)
                 
             if c_filter:
-                all_fees = FeeCollection.query.join(Student).filter(Student.course_id == c_filter, FeeCollection.is_deleted == False).order_by(FeeCollection.date_collected.desc()).all()
+                pagination = FeeCollection.query.join(Student).filter(Student.course_id == c_filter, FeeCollection.is_deleted == False).order_by(FeeCollection.date_collected.desc()).paginate(page=request.args.get('page', 1, type=int), per_page=10, error_out=False)
                 active_students = Student.query.filter_by(course_id=c_filter, status='Active').all()
             else:
-                all_fees = FeeCollection.query.join(Student).filter(Student.course_id.in_(assigned_course_ids), FeeCollection.is_deleted == False).order_by(FeeCollection.date_collected.desc()).all()
+                pagination = FeeCollection.query.join(Student).filter(Student.course_id.in_(assigned_course_ids), FeeCollection.is_deleted == False).order_by(FeeCollection.date_collected.desc()).paginate(page=request.args.get('page', 1, type=int), per_page=10, error_out=False)
                 active_students = Student.query.filter(Student.course_id.in_(assigned_course_ids), Student.status=='Active').all()
         courses_list = assigned_courses
     else:
         c_filter = int(selected_course_id) if selected_course_id and selected_course_id.isdigit() else None
         if c_filter:
-            all_fees = FeeCollection.query.join(Student).filter(Student.course_id == c_filter, FeeCollection.is_deleted == False).order_by(FeeCollection.date_collected.desc()).all()
+            pagination = FeeCollection.query.join(Student).filter(Student.course_id == c_filter, FeeCollection.is_deleted == False).order_by(FeeCollection.date_collected.desc()).paginate(page=request.args.get('page', 1, type=int), per_page=10, error_out=False)
             active_students = Student.query.filter_by(course_id=c_filter, status='Active').all()
         else:
-            all_fees = FeeCollection.query.filter_by(is_deleted=False).order_by(FeeCollection.date_collected.desc()).all()
+            pagination = FeeCollection.query.filter_by(is_deleted=False).order_by(FeeCollection.date_collected.desc()).paginate(page=request.args.get('page', 1, type=int), per_page=10, error_out=False)
             active_students = Student.query.filter_by(status='Active').all()
             selected_course_id = 'all'
         courses_list = Course.query.filter_by(status='Active').all()
         
-    return render_template('fees.html', fees=all_fees, active_students=active_students, courses=courses_list, selected_course_id=selected_course_id)
+    return render_template('fees.html', pagination=pagination, fees=pagination.items if 'pagination' in locals() else [], active_students=active_students, courses=courses_list, selected_course_id=selected_course_id)
 
 @coordinator_bp.route('/attendance')
 @login_required
@@ -286,9 +288,10 @@ def attendance_course(course_id):
     else:
         courses = Course.query.filter_by(status='Active').all()
         
-    sessions = ClassSession.query.filter_by(course_id=course.id).order_by(ClassSession.date.desc()).all()
+    page = request.args.get('page', 1, type=int)
+    pagination = ClassSession.query.filter_by(course_id=course.id).order_by(ClassSession.date.desc()).paginate(page=page, per_page=10, error_out=False)
     today_str = date.today().strftime('%Y-%m-%d')
-    return render_template('attendance.html', courses=courses, active_course=course, sessions=sessions, today=today_str, json=json)
+    return render_template('attendance.html', courses=courses, active_course=course, pagination=pagination, sessions=pagination.items, today=today_str, json=json)
 
 @coordinator_bp.route('/attendance/<int:course_id>/<int:session_id>', methods=['GET', 'POST'])
 @login_required
@@ -426,20 +429,20 @@ def expenses():
                 selected_course_id = str(c_filter)
                 
             if c_filter:
-                all_expenses = Expense.query.filter_by(course_id=c_filter, is_deleted=False).order_by(Expense.expense_date.desc()).all()
+                pagination = Expense.query.filter_by(course_id=c_filter, is_deleted=False).order_by(Expense.expense_date.desc()).paginate(page=request.args.get('page', 1, type=int), per_page=10, error_out=False)
             else:
-                all_expenses = Expense.query.filter(Expense.course_id.in_(assigned_course_ids), Expense.is_deleted == False).order_by(Expense.expense_date.desc()).all()
+                pagination = Expense.query.filter(Expense.course_id.in_(assigned_course_ids), Expense.is_deleted == False).order_by(Expense.expense_date.desc()).paginate(page=request.args.get('page', 1, type=int), per_page=10, error_out=False)
         courses_list = assigned_courses
     else:
         c_filter = int(selected_course_id) if selected_course_id and selected_course_id.isdigit() else None
         if c_filter:
-            all_expenses = Expense.query.filter_by(course_id=c_filter, is_deleted=False).order_by(Expense.expense_date.desc()).all()
+            pagination = Expense.query.filter_by(course_id=c_filter, is_deleted=False).order_by(Expense.expense_date.desc()).paginate(page=request.args.get('page', 1, type=int), per_page=10, error_out=False)
         else:
-            all_expenses = Expense.query.filter_by(is_deleted=False).order_by(Expense.expense_date.desc()).all()
+            pagination = Expense.query.filter_by(is_deleted=False).order_by(Expense.expense_date.desc()).paginate(page=request.args.get('page', 1, type=int), per_page=10, error_out=False)
             selected_course_id = 'all'
         courses_list = Course.query.filter_by(status='Active').all()
         
-    return render_template('expenses.html', expenses=all_expenses, courses=courses_list, selected_course_id=selected_course_id)
+    return render_template('expenses.html', pagination=pagination, expenses=pagination.items if 'pagination' in locals() else [], courses=courses_list, selected_course_id=selected_course_id)
 
 # --- Approval Requests ---
 @coordinator_bp.route('/request_edit', methods=['POST'])
@@ -535,10 +538,15 @@ def view_my_requests():
         flash('Access denied!', 'danger')
         return redirect(url_for('dashboard.index'))
         
-    requests_list = ApprovalRequest.query.filter_by(requested_by_id=current_user.id).order_by(ApprovalRequest.created_at.desc()).all()
+    page = request.args.get('page', 1, type=int)
+    pagination = ApprovalRequest.query.filter_by(requested_by_id=current_user.id).order_by(ApprovalRequest.created_at.desc()).paginate(page=page, per_page=10, error_out=False)
+    requests_list = pagination.items
     
-    # Pre-load records for context
-    fee_records = {f.id: f for f in FeeCollection.query.all()}
-    expense_records = {e.id: e for e in Expense.query.all()}
+    # Pre-load only records for context
+    fee_ids = [r.record_id for r in requests_list if r.module == 'Fee']
+    exp_ids = [r.record_id for r in requests_list if r.module == 'Expense']
     
-    return render_template('coordinator_requests.html', requests=requests_list, fee_records=fee_records, expense_records=expense_records, json=json)
+    fee_records = {f.id: f for f in FeeCollection.query.filter(FeeCollection.id.in_(fee_ids)).all()} if fee_ids else {}
+    expense_records = {e.id: e for e in Expense.query.filter(Expense.id.in_(exp_ids)).all()} if exp_ids else {}
+    
+    return render_template('coordinator_requests.html', pagination=pagination, requests=requests_list, fee_records=fee_records, expense_records=expense_records, json=json)

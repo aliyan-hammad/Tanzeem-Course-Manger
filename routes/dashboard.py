@@ -128,42 +128,84 @@ def index():
         
         pending_requests_count = ApprovalRequest.query.filter_by(requested_by_id=current_user.id, status='Pending').count()
         
-        today_absentees = []
-        today_sessions = ClassSession.query.filter(
-            ClassSession.course_id.in_(assigned_course_ids), 
-            ClassSession.date == today_date
-        ).all()
-        session_ids = [s.id for s in today_sessions]
-        if session_ids:
-            absent_records = Attendance.query.filter(
-                Attendance.session_id.in_(session_ids),
-                Attendance.status.in_(['Absent', 'Leave'])
-            ).all()
-            seen_students = set()
-            for rec in absent_records:
-                if rec.student_id not in seen_students:
-                    today_absentees.append(rec)
-                    seen_students.add(rec.student_id)
-                    
-        yesterday_date = today_date - timedelta(days=1)
-        yesterdays_absentees = []
-        yesterday_sessions = ClassSession.query.filter(
-            ClassSession.course_id.in_(assigned_course_ids), 
-            ClassSession.date == yesterday_date
-        ).all()
-        y_session_ids = [s.id for s in yesterday_sessions]
-        if y_session_ids:
-            y_absent_records = Attendance.query.filter(
-                Attendance.session_id.in_(y_session_ids),
-                Attendance.status.in_(['Absent', 'Leave'])
-            ).all()
-            seen_y_students = set()
-            for rec in y_absent_records:
-                if rec.student_id not in seen_y_students:
-                    yesterdays_absentees.append(rec)
-                    seen_y_students.add(rec.student_id)
-                    
         active_students_list = base_stu_q.all()
+        
+        def get_daily_absentees(target_date):
+            absentees = []
+            sessions = ClassSession.query.filter(
+                ClassSession.course_id.in_(assigned_course_ids), 
+                ClassSession.date == target_date
+            ).all()
+            if not sessions:
+                return []
+                
+            course_sessions = {}
+            for s in sessions:
+                course_sessions.setdefault(s.course_id, []).append(s)
+                
+            session_ids = [s.id for s in sessions]
+            all_attendance = Attendance.query.filter(Attendance.session_id.in_(session_ids)).all()
+            att_dict = {}
+            for a in all_attendance:
+                att_dict.setdefault(a.student_id, {})[a.session_id] = a.status
+                
+            for student in active_students_list:
+                s_sessions = course_sessions.get(student.course_id, [])
+                total_sessions = len(s_sessions)
+                if total_sessions == 0:
+                    continue
+                    
+                present_count = 0
+                missed_subjects = []
+                for s in s_sessions:
+                    status = att_dict.get(student.id, {}).get(s.id)
+                    if status == 'Present':
+                        present_count += 1
+                    else:
+                        missed_subjects.append(s.subject_name)
+                        
+                if present_count == 0:
+                    absentees.append({
+                        'student': student,
+                        'absent_type': 'Full',
+                        'missed_subjects': ['All']
+                    })
+                elif present_count < total_sessions:
+                    absentees.append({
+                        'student': student,
+                        'absent_type': 'Partial',
+                        'missed_subjects': missed_subjects
+                    })
+            return absentees
+
+        today_absentees = get_daily_absentees(today_date)
+        yesterday_date = today_date - timedelta(days=1)
+        yesterdays_absentees = get_daily_absentees(yesterday_date)
+                    
+        last_2_dates_by_course = {}
+        for c_id in assigned_course_ids:
+            dates = db.session.query(ClassSession.date).filter(
+                ClassSession.course_id == c_id
+            ).distinct().order_by(ClassSession.date.desc()).limit(2).all()
+            if len(dates) == 2:
+                last_2_dates_by_course[c_id] = [d[0] for d in dates]
+
+        target_session_ids = []
+        for c_id, dates in last_2_dates_by_course.items():
+            s_ids = db.session.query(ClassSession.id).filter(
+                ClassSession.course_id == c_id,
+                ClassSession.date.in_(dates)
+            ).all()
+            target_session_ids.extend([s[0] for s in s_ids])
+
+        student_date_status = {}
+        if target_session_ids:
+            consec_att = Attendance.query.join(ClassSession).filter(
+                Attendance.session_id.in_(target_session_ids)
+            ).all()
+            for att in consec_att:
+                student_date_status.setdefault(att.student_id, {}).setdefault(att.session.date, []).append(att.status)
+
         consecutive_absences = []
         low_attendance = []
         
@@ -172,12 +214,15 @@ def index():
             if calc['total'] > 0 and calc['percentage'] < 70:
                 low_attendance.append({'student': student, 'percentage': calc['percentage'], 'formatted': calc['formatted']})
                 
-            recent_att = Attendance.query.join(ClassSession).filter(
-                Attendance.student_id == student.id
-            ).order_by(ClassSession.date.desc()).limit(2).all()
-            
-            if len(recent_att) == 2 and all(a.status == 'Absent' for a in recent_att):
-                consecutive_absences.append(student)
+            dates = last_2_dates_by_course.get(student.course_id)
+            if dates and len(dates) == 2:
+                d1_statuses = student_date_status.get(student.id, {}).get(dates[0], [])
+                d2_statuses = student_date_status.get(student.id, {}).get(dates[1], [])
+                
+                # Student must have attendance records on both dates, and ZERO "Present" statuses on both dates
+                if d1_statuses and d2_statuses:
+                    if 'Present' not in d1_statuses and 'Present' not in d2_statuses:
+                        consecutive_absences.append(student)
                 
         return render_template('dashboard.html', 
                                total_active_students=total_active_students,
