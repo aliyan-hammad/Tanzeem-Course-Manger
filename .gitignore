@@ -5,3 +5,6 @@ __pycache__/
 instance/
 *.db
 .pytest_cache/
+
+# Secrets
+credentials.json
