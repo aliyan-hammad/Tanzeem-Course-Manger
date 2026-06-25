@@ -20,7 +20,7 @@ DAILY_SPREADSHEET_ID = '1VCvZXl-xTo1OEHb9uAMzbyeMgXWkQKM-rhdnmhGHVy8'
 def get_gspread_client():
     env_creds = os.environ.get('GOOGLE_CREDENTIALS')
     if env_creds:
-        creds_dict = json.loads(env_creds)
+        creds_dict = json.loads(env_creds, strict=False)
         creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
     else:
         creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
