@@ -602,7 +602,7 @@ function exportToPDF(wrapperId, filename) {
         ],
         consecutive: [
             {% for rec in consecutive_absences %}
-            ["{{ rec.student.full_name }}", "{{ rec.student.registration_id }}", "{{ rec.student.course.name }}", "{{ rec.phone }}"],
+            ["{{ rec.full_name }}", "{{ rec.registration_id }}", "{{ rec.course.name if rec.course else 'N/A' }}", "{{ rec.phone }}"],
             {% endfor %}
         ],
         low: [
