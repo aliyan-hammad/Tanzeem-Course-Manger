@@ -52,32 +52,72 @@ def trigger_sync_expense_month(app, month_str):
 
 def register_listeners(app):
     with app.app_context():
-        @event.listens_for(Student, 'after_insert')
-        @event.listens_for(Student, 'after_update')
-        @event.listens_for(Student, 'after_delete')
-        def sync_students_on_change(mapper, connection, target):
-            # We need to sync the entire master list. But we can't query inside this connection easily.
-            # We'll pass the app context to the background thread.
+        def _sync_students_action(action, target):
             def do_sync():
                 with app.app_context():
                     all_students = Student.query.all()
+                    from models import Course
                     data = []
+                    
+                    target_added = False
                     for s in all_students:
+                        if action == 'delete' and s.id == target.id:
+                            continue
+                            
+                        if (action == 'update' or action == 'insert') and s.id == target.id:
+                            student_to_use = target
+                            target_added = True
+                        else:
+                            student_to_use = s
+                            
+                        # Safely resolve course name for the target
+                        if student_to_use == target:
+                            c = Course.query.get(target.course_id) if target.course_id else None
+                            course_name = c.name if c else 'N/A'
+                        else:
+                            course_name = student_to_use.course.name if student_to_use.course else 'N/A'
+                            
                         data.append({
-                            'id': s.id,
-                            'registration_id': s.registration_id,
-                            'full_name': s.full_name,
-                            'father_name': s.father_name,
-                            'course': s.course.name if s.course else 'N/A',
-                            'phone': s.phone,
-                            'status': s.status,
-                            'enrollment_date': s.enrollment_date
+                            'id': student_to_use.id,
+                            'registration_id': student_to_use.registration_id,
+                            'full_name': student_to_use.full_name,
+                            'father_name': student_to_use.father_name,
+                            'course': course_name,
+                            'phone': student_to_use.phone,
+                            'status': student_to_use.status,
+                            'enrollment_date': student_to_use.enrollment_date
                         })
+                        
+                    if action == 'insert' and not target_added:
+                        c = Course.query.get(target.course_id) if target.course_id else None
+                        data.append({
+                            'id': target.id,
+                            'registration_id': target.registration_id,
+                            'full_name': target.full_name,
+                            'father_name': target.father_name,
+                            'course': c.name if c else 'N/A',
+                            'phone': target.phone,
+                            'status': target.status,
+                            'enrollment_date': target.enrollment_date
+                        })
+                        
                     try:
                         sync_admin_master_students(data)
                     except Exception as e:
                         print(f"Error syncing students: {e}")
             run_in_background(do_sync)
+
+        @event.listens_for(Student, 'after_insert')
+        def sync_students_on_insert(mapper, connection, target):
+            _sync_students_action('insert', target)
+            
+        @event.listens_for(Student, 'after_update')
+        def sync_students_on_update(mapper, connection, target):
+            _sync_students_action('update', target)
+            
+        @event.listens_for(Student, 'after_delete')
+        def sync_students_on_delete(mapper, connection, target):
+            _sync_students_action('delete', target)
 
         @event.listens_for(FeeCollection, 'after_insert')
         def sync_fee_on_insert(mapper, connection, target):

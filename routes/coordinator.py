@@ -5,6 +5,7 @@ from flask_login import login_required, current_user
 from extensions import db
 from models import Course, Student, FeeCollection, Expense, Attendance, ApprovalRequest, ClassSession
 from helpers import log_audit
+from sqlalchemy.exc import IntegrityError
 
 coordinator_bp = Blueprint('coordinator', __name__)
 
@@ -136,10 +137,15 @@ def delete_student(id):
             return redirect(url_for('coordinator.students'))
             
     full_name = student.full_name
-    db.session.delete(student)
-    db.session.commit()
-    log_audit('Delete', 'Student', record_id=id, remarks=f'Permanently deleted student: {full_name}')
-    flash('Student deleted successfully!', 'success')
+    try:
+        db.session.delete(student)
+        db.session.commit()
+        log_audit('Delete', 'Student', record_id=id, remarks=f'Permanently deleted student: {full_name}')
+        flash('Student deleted successfully!', 'success')
+    except IntegrityError:
+        db.session.rollback()
+        flash("Cannot delete this student because he has associated attendance or fee records.", "danger")
+        
     return redirect(url_for('coordinator.students'))
 
 # --- Fees Handling ---
