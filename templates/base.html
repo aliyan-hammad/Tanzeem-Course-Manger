@@ -78,6 +78,69 @@
                 color: black !important;
             }
         }
+        
+        /* Custom Subtle Pagination: < page no > */
+        .dataTables_wrapper .pagination {
+            justify-content: flex-end;
+            margin-top: 10px;
+            align-items: center;
+        }
+        .dataTables_wrapper .pagination .page-item:not(.previous):not(.next):not(.active) {
+            display: none !important; /* Hide inactive page numbers */
+        }
+        .dataTables_wrapper .pagination .page-item .page-link {
+            border: none !important;
+            background: transparent !important;
+            color: #6c757d !important;
+            padding: 0.25rem 0.5rem !important;
+            font-size: 1.1rem !important; 
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* Replace "Previous" with "<" */
+        .dataTables_wrapper .pagination .page-item.previous .page-link,
+        .dataTables_wrapper .pagination .page-item.next .page-link {
+            font-size: 0 !important; /* Hide the Previous/Next text */
+        }
+        
+        /* Remove blue focus box on click */
+        .dataTables_wrapper .pagination .page-item .page-link:focus {
+            box-shadow: none !important;
+            outline: none !important;
+        }
+        
+        /* Dim arrows when there is no next/previous page */
+        .dataTables_wrapper .pagination .page-item.disabled .page-link,
+        .dataTables_wrapper .pagination .page-item.disabled .page-link::after {
+            color: #d1d5db !important; /* Very light grey */
+            cursor: default;
+        }
+        
+        .dataTables_wrapper .pagination .page-item.previous .page-link::after {
+            content: "\003C"; /* Standard < character */
+            font-size: 1.6rem; /* Make it large */
+            line-height: 1;
+        }
+
+        /* Replace "Next" with ">" */
+        .dataTables_wrapper .pagination .page-item.next .page-link::after {
+            content: "\003E"; /* Standard > character */
+            font-size: 1.6rem; /* Make it large */
+            line-height: 1;
+        }
+        
+        /* Prevent Pagination Jump (Keep pagination anchored at bottom) */
+        .dataTables_wrapper {
+            display: flex;
+            flex-direction: column;
+            min-height: 550px; /* Anchors the height */
+        }
+        .dataTables_wrapper > div:nth-child(2) {
+            flex-grow: 1; /* Pushes the pagination row to the bottom */
+        }
     </style>
 </head>
 <body>
@@ -230,5 +293,6 @@
             clone.remove();
         }
     </script>
+    {% block scripts %}{% endblock %}
 </body>
 </html>

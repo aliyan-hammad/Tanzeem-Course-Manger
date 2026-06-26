@@ -11,7 +11,7 @@ def create_app():
     app = Flask(__name__)
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-here')
     
-    database_url = os.environ.get('DATABASE_URL', 'sqlite:///tanzeem.db')
+    database_url = os.environ.get('DATABASE_URL', 'sqlite:////tmp/tanzeem.db')
     if database_url.startswith('postgres://'):
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
         
@@ -29,11 +29,13 @@ def create_app():
     from routes.dashboard import dashboard_bp
     from routes.admin import admin_bp
     from routes.coordinator import coordinator_bp
+    from routes.sync import sync_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(coordinator_bp)
+    app.register_blueprint(sync_bp)
 
     @app.context_processor
     def inject_pending_requests():
@@ -59,6 +61,10 @@ def create_app():
             )
             db.session.add(admin_user)
             db.session.commit()
+
+    # Register SQLAlchemy background sync listeners
+    from sync_listeners import register_listeners
+    register_listeners(app)
 
     return app
 app = create_app()

@@ -348,32 +348,99 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
+<!-- DataTables CSS & JS -->
+<style>
+.dataTables_wrapper .dataTables_paginate .paginate_button { padding: 0 !important; margin: 0 !important; border: none !important; }
+.dataTables_wrapper .dataTables_filter input { border-radius: 0.25rem; border: 1px solid #ced4da; padding: 0.375rem 0.75rem; }
+</style>
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css"/>
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
 <script>
+const dtOptions = {
+    pageLength: 10,
+    lengthChange: false,
+    language: {
+        search: "Filter:",
+        info: "Showing _START_ to _END_ of _TOTAL_ entries",
+        paginate: { previous: "Prev" }
+    }
+};
+
 function exportToExcel(tableId, filename) {
+    // Temporarily destroy DataTable to expose all rows to XLSX
+    if ($.fn.DataTable.isDataTable('#' + tableId)) {
+        $('#' + tableId).DataTable().destroy();
+    }
+    
     const table = document.getElementById(tableId);
     const wb = XLSX.utils.table_to_book(table, { sheet: "Report" });
     const formattedDate = new Date().toISOString().slice(0, 10);
     XLSX.writeFile(wb, `${filename}_${formattedDate}.xlsx`);
+    
+    // Re-initialize DataTable
+    $('#' + tableId).DataTable(dtOptions);
 }
 
 function exportToPDF(elementId, filename) {
-    const element = document.getElementById(elementId);
-    const formattedDate = new Date().toISOString().slice(0, 10);
-    
-    // Configure PDF options
-    const opt = {
-        margin:       [10, 10, 10, 10],
-        filename:     `${filename}_${formattedDate}.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
-    };
-    
-// Save report directly as PDF
-    html2pdf().set(opt).from(element).save();
+    // Determine the table ID based on the wrapper ID
+    let tableId = null;
+    if (elementId === 'students_wrapper') tableId = 'studentsTable';
+    if (elementId === 'fees_wrapper') tableId = 'feesTable';
+    if (elementId === 'expenses_wrapper') tableId = 'expensesTable';
+    if (elementId === 'attendance_wrapper') tableId = 'attendanceTable';
+
+    // Temporarily destroy DataTable to expose all rows to PDF
+    if (tableId && $.fn.DataTable.isDataTable('#' + tableId)) {
+        $('#' + tableId).DataTable().destroy();
+    }
+
+    // Small delay to allow the browser DOM to physically render the un-paginated rows
+    setTimeout(() => {
+        const element = document.getElementById(elementId);
+        const formattedDate = new Date().toISOString().slice(0, 10);
+        
+        // Configure PDF options
+        const opt = {
+            margin:       [10, 10, 10, 10],
+            filename:     `${filename}_${formattedDate}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' },
+            pagebreak:    { mode: ['css', 'legacy'], before: '.break-here' }
+        };
+        
+        // Force a page break every 10 rows
+        const rows = element.querySelectorAll('tbody tr');
+        rows.forEach((row, index) => {
+            if (index > 0 && index % 10 === 0) {
+                row.style.pageBreakBefore = 'always';
+                row.classList.add('break-here');
+            }
+        });
+        
+        // Save report directly as PDF
+        html2pdf().set(opt).from(element).save().then(() => {
+            // Remove the temporary classes/styles we just added
+            rows.forEach(row => {
+                row.classList.remove('break-here');
+                row.style.pageBreakBefore = '';
+            });
+            
+            // Re-initialize DataTable after PDF generation is fully requested
+            if (tableId) {
+                $('#' + tableId).DataTable(dtOptions);
+            }
+        });
+    }, 100);
 }
 
 document.addEventListener("DOMContentLoaded", function() {
+    // Initialize DataTables
+    $('#studentsTable, #feesTable, #expensesTable, #attendanceTable').DataTable(dtOptions);
+
     // Restore active tab from sessionStorage
     var activeTab = sessionStorage.getItem('reportsActiveTab');
     if (activeTab) {

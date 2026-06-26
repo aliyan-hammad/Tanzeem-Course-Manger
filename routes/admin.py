@@ -1,12 +1,12 @@
 import json
 from datetime import datetime, date
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash
 from extensions import db
 from models import User, Course, Student, FeeCollection, Expense, Attendance, AuditLog, ApprovalRequest, ClassSession
 from helpers import log_audit, calculate_attendance
-from helpers import log_audit
+from sync_listeners import trigger_sync_fee_month, trigger_sync_expense_month
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -358,6 +358,14 @@ def action_request(id):
                         record.date_collected = datetime.strptime(payload['date_collected'], '%Y-%m-%d')
                     db.session.commit()
                     log_audit('Update', 'Fee', record_id=record.id, old_values=old_vals, new_values=payload, remarks=f'Edit request approved: {admin_notes}')
+                    
+                    if old_vals['date_collected']:
+                        old_month = datetime.strptime(old_vals['date_collected'], '%Y-%m-%d').strftime('%B %Y')
+                        trigger_sync_fee_month(current_app._get_current_object(), old_month)
+                    if record.date_collected:
+                        new_month = record.date_collected.strftime('%B %Y')
+                        if new_month != old_month:
+                            trigger_sync_fee_month(current_app._get_current_object(), new_month)
             elif req.module == 'Expense':
                 record = Expense.query.filter_by(id=req.record_id, is_deleted=False).first()
                 if record:
@@ -376,6 +384,14 @@ def action_request(id):
                         record.expense_date = datetime.strptime(payload['expense_date'], '%Y-%m-%d')
                     db.session.commit()
                     log_audit('Update', 'Expense', record_id=record.id, old_values=old_vals, new_values=payload, remarks=f'Edit request approved: {admin_notes}')
+                    
+                    if old_vals['expense_date']:
+                        old_month = datetime.strptime(old_vals['expense_date'], '%Y-%m-%d').strftime('%B %Y')
+                        trigger_sync_expense_month(current_app._get_current_object(), old_month)
+                    if record.expense_date:
+                        new_month = record.expense_date.strftime('%B %Y')
+                        if new_month != old_month:
+                            trigger_sync_expense_month(current_app._get_current_object(), new_month)
         elif req.request_type == 'Delete':
             if req.module == 'Fee':
                 record = FeeCollection.query.filter_by(id=req.record_id, is_deleted=False).first()
@@ -386,6 +402,9 @@ def action_request(id):
                     record.delete_reason = req.reason
                     db.session.commit()
                     log_audit('Soft Delete', 'Fee', record_id=record.id, remarks=f'Delete request approved: {req.reason}')
+                    
+                    if record.date_collected:
+                        trigger_sync_fee_month(current_app._get_current_object(), record.date_collected.strftime('%B %Y'))
             elif req.module == 'Expense':
                 record = Expense.query.filter_by(id=req.record_id, is_deleted=False).first()
                 if record:
@@ -395,6 +414,9 @@ def action_request(id):
                     record.delete_reason = req.reason
                     db.session.commit()
                     log_audit('Soft Delete', 'Expense', record_id=record.id, remarks=f'Delete request approved: {req.reason}')
+                    
+                    if record.expense_date:
+                        trigger_sync_expense_month(current_app._get_current_object(), record.expense_date.strftime('%B %Y'))
                     
         flash(f'Request successfully {req.status.lower()}d!', 'success')
     else:
