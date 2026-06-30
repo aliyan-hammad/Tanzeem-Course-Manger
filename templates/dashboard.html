@@ -178,7 +178,18 @@
                     <input type="text" id="globalTabSearch" class="form-control form-control-sm" style="max-width: 150px;" placeholder="Filter...">
                     <button class="btn btn-sm btn-outline-danger" onclick="exportCurrentTabPDF()"><i class="bi bi-file-pdf"></i> PDF</button>
                     <button class="btn btn-sm btn-outline-success" onclick="exportCurrentTabExcel()"><i class="bi bi-file-excel"></i> Excel</button>
-                    <button class="btn btn-sm btn-outline-primary" id="syncGoogleBtn" onclick="syncToGoogle()"><i class="bi bi-cloud-upload"></i> Sync</button>
+                    
+                    <div class="input-group input-group-sm" style="max-width: 220px;">
+                        <input type="date" id="syncDate" class="form-control" title="Select date for syncing attendance">
+                        <button class="btn btn-outline-primary" id="syncGoogleBtn" onclick="syncToGoogle()"><i class="bi bi-cloud-upload"></i> Sync</button>
+                        <script>
+                            document.addEventListener('DOMContentLoaded', function() {
+                                const today = new Date().toISOString().split('T')[0];
+                                document.getElementById('syncDate').value = today;
+                                document.getElementById('syncDate').max = today;
+                            });
+                        </script>
+                    </div>
                 </div>
             </div>
             <div class="card-body p-0">
@@ -614,13 +625,22 @@ function exportToPDF(wrapperId, filename) {
 
     function syncToGoogle() {
         const btn = document.getElementById('syncGoogleBtn');
+        const syncDate = document.getElementById('syncDate').value;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Syncing...';
         btn.disabled = true;
+        
+        const payload = {
+            target_date: syncDate,
+            today: syncData.today,
+            yesterday: syncData.yesterday,
+            consecutive: syncData.consecutive,
+            low: syncData.low
+        };
         
         fetch('/dashboard/sync_sheets', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(syncData)
+            body: JSON.stringify(payload)
         }).then(res => res.json()).then(data => {
             btn.innerHTML = '<i class="bi bi-cloud-check-fill"></i> Synced';
             btn.classList.replace('btn-outline-primary', 'btn-success');

@@ -134,7 +134,15 @@ def sync_daily_coordinator_report(date_str, today_absentees, yesterdays_absentee
 
     # Consecutive Absentees
     headers_consec = ["Student Name", "Registration ID", "Course", "Contact"]
-    summary_consec = '="TOTAL STUDENTS: " & COUNTA(A3:A)'
+    
+    # Check if this is a historical sync by looking at the first row
+    is_historical = False
+    if consec_absentees and len(consec_absentees[0]) > 0 and str(consec_absentees[0][0]).startswith("ℹ️"):
+        is_historical = True
+        summary_consec = '="TOTAL STUDENTS: N/A"'
+    else:
+        summary_consec = '="TOTAL STUDENTS: " & COUNTA(A3:A)'
+        
     ws_consec = get_or_create_worksheet(spreadsheet, f"{date_str} Consec. Abs", headers_consec, summary_consec)
     ws_consec.clear()
     
@@ -146,6 +154,11 @@ def sync_daily_coordinator_report(date_str, today_absentees, yesterdays_absentee
         ws_consec.format('A1:D1', {'textFormat': {'bold': True, 'fontSize': 14}, 'backgroundColor': {'red': 0.9, 'green': 0.95, 'blue': 1.0}})
         ws_consec.format('A2:D2', {'textFormat': {'bold': True, 'fontSize': 11}, 'backgroundColor': {'red': 0.95, 'green': 0.95, 'blue': 0.95}})
         ws_consec.freeze(rows=2)
+        
+        # If historical, merge cells and center the message for better UX
+        if is_historical:
+            ws_consec.merge_cells('A3:D3')
+            ws_consec.format('A3:D3', {'horizontalAlignment': 'CENTER', 'textFormat': {'italic': True, 'foregroundColor': {'red': 0.5, 'green': 0.5, 'blue': 0.5}}})
     except Exception:
         pass
     
