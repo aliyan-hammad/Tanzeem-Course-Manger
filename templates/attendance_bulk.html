@@ -3,7 +3,7 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>Bulk Attendance Entry</h2>
-    <a href="{{ url_for('coordinator.attendance_course', course_id=course.id) }}" class="btn btn-secondary">
+    <a href="{{ url_for('coordinator.attendance', course_id=course.id) }}" class="btn btn-secondary">
         <i class="bi bi-arrow-left"></i> Back to Sessions
     </a>
 </div>
