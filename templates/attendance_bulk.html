@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Bulk Attendance Entry</h2>
-    <a href="{{ url_for('coordinator.attendance', course_id=course.id) }}" class="btn btn-secondary">
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <h2 class="mb-0">Bulk Attendance Entry</h2>
+    <a href="{{ url_for('coordinator.attendance', course_id=course.id) }}" class="btn btn-secondary text-nowrap">
         <i class="bi bi-arrow-left"></i> Back to Sessions
     </a>
 </div>
@@ -26,26 +26,26 @@
 
 <form method="POST" action="{{ url_for('coordinator.attendance_bulk', course_id=course.id, session_id=session_obj.id) }}">
     <div class="card shadow-sm border-0">
-        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-3">
             <h5 class="mb-0">Mark Attendance</h5>
-            <div>
+            <div class="d-flex gap-2">
                 <button type="button" class="btn btn-sm btn-outline-success" onclick="markAll('Present')">Mark All Present</button>
                 <button type="button" class="btn btn-sm btn-outline-danger" onclick="markAll('Absent')">Mark All Absent</button>
             </div>
         </div>
-        <div class="card-body p-0">
-            <table class="table table-hover mb-0 align-middle">
+        <div class="card-body p-0 table-responsive">
+            <table class="table table-hover mb-0 align-middle" style="min-width: 500px;">
                 <thead class="table-light">
                     <tr>
-                        <th>Reg ID</th>
+                        <th class="d-none d-sm-table-cell">Reg ID</th>
                         <th>Student Name</th>
-                        <th class="text-center" style="width: 300px;">Status</th>
+                        <th class="text-center" style="width: 250px;">Status</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for student in students %}
                     <tr>
-                        <td><strong>{{ student.registration_id }}</strong></td>
+                        <td class="d-none d-sm-table-cell"><strong>{{ student.registration_id }}</strong></td>
                         <td>{{ student.full_name }}</td>
                         <td class="text-center">
                             {% set saved_status = attendance_map.get(student.id, 'Present') %}

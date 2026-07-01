@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>{% if current_user.role == 'Admin' %}System Overview Dashboard{% else %}Coordinator Workspace{% endif %}</h2>
-    <span class="badge bg-secondary p-2"><i class="bi bi-person-circle"></i> {{ current_user.full_name if current_user.full_name else current_user.username }} ({{ current_user.role }})</span>
+<div class="d-flex justify-content-between align-items-center mb-4 gap-2">
+    <h2 class="text-truncate flex-grow-1 mb-0" style="min-width: 0;">{% if current_user.role == 'Admin' %}System Overview Dashboard{% else %}Coordinator Workspace{% endif %}</h2>
+    <span class="badge bg-secondary p-2 text-truncate" style="max-width: 150px;"><i class="bi bi-person-circle"></i> {{ current_user.full_name if current_user.full_name else current_user.username }}</span>
 </div>
 
 <!-- Dashboard Filters -->
@@ -20,11 +20,11 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-12 col-sm-6 col-lg-3">
                 <label for="start_date" class="form-label fw-bold text-secondary">Start Date</label>
                 <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date_str }}">
             </div>
-            <div class="col-md-3">
+            <div class="col-12 col-sm-6 col-lg-3">
                 <label for="end_date" class="form-label fw-bold text-secondary">End Date</label>
                 <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date_str }}">
             </div>
@@ -38,7 +38,7 @@
 <!-- Admin Role KPI Dashboard -->
 {% if current_user.role == 'Admin' %}
 <div class="row g-4 mb-4">
-    <div class="col-md-3">
+    <div class="col-12 col-sm-6 col-lg-3">
         <div class="card bg-primary text-white shadow-sm border-0 h-100">
             <div class="card-body py-3">
                 <h6 class="text-uppercase text-white-50 small mb-1">Total Active Students</h6>
@@ -46,7 +46,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-12 col-sm-6 col-lg-3">
         <div class="card bg-success text-white shadow-sm border-0 h-100">
             <div class="card-body py-3">
                 <h6 class="text-uppercase text-white-50 small mb-1">Total Fee Collected</h6>
@@ -55,7 +55,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-12 col-sm-6 col-lg-3">
         <div class="card bg-danger text-white shadow-sm border-0 h-100">
             <div class="card-body py-3">
                 <h6 class="text-uppercase text-white-50 small mb-1">Total Expenses</h6>
@@ -63,7 +63,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-12 col-sm-6 col-lg-3">
         <div class="card bg-secondary text-white shadow-sm border-0 h-100">
             <div class="card-body py-3">
                 <h6 class="text-uppercase text-white-50 small mb-1">Net Balance</h6>
@@ -109,7 +109,7 @@
 <!-- Coordinator Role KPI Dashboard -->
 {% else %}
 <div class="row g-4 mb-4">
-    <div class="col-md-3">
+    <div class="col-12 col-sm-6 col-lg-3">
         <div class="card bg-success text-white shadow-sm border-0 h-100">
             <div class="card-body">
                 <h6 class="text-uppercase text-white-50 small mb-1">Today's Collections</h6>
@@ -117,7 +117,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-12 col-sm-6 col-lg-3">
         <div class="card bg-primary text-white shadow-sm border-0 h-100">
             <div class="card-body">
                 <h6 class="text-uppercase text-white-50 small mb-1">This Month's Collections</h6>
@@ -125,7 +125,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-12 col-sm-6 col-lg-3">
         <div class="card bg-danger text-white shadow-sm border-0 h-100">
             <div class="card-body">
                 <h6 class="text-uppercase text-white-50 small mb-1">Total Expenses Logged</h6>
@@ -133,7 +133,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-12 col-sm-6 col-lg-3">
         <div class="card bg-secondary text-white shadow-sm border-0 h-100">
             <div class="card-body">
                 <h6 class="text-uppercase text-white-50 small mb-1">Net Balance</h6>
@@ -172,56 +172,68 @@
 <div class="row mb-4">
     <div class="col-12">
         <div class="card shadow-sm border-0">
-            <div class="card-header bg-white py-3 border-0 d-flex flex-wrap justify-content-between align-items-center">
-                <h5 class="mb-0 fw-bold text-secondary"><i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>Student Irregularities</h5>
-                <div class="d-flex gap-2 align-items-center mt-2 mt-md-0">
-                    <input type="text" id="globalTabSearch" class="form-control form-control-sm" style="max-width: 150px;" placeholder="Filter...">
-                    <button class="btn btn-sm btn-outline-danger" onclick="exportCurrentTabPDF()"><i class="bi bi-file-pdf"></i> PDF</button>
-                    <button class="btn btn-sm btn-outline-success" onclick="exportCurrentTabExcel()"><i class="bi bi-file-excel"></i> Excel</button>
-                    
-                    <div class="input-group input-group-sm" style="max-width: 220px;">
+            <div class="card-header bg-white py-3 border-0 d-flex flex-column gap-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold text-secondary"><i class="bi bi-exclamation-triangle-fill text-warning"></i> Student Irregularities</h5>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-danger" onclick="exportCurrentTabPDF()"><i class="bi bi-file-earmark-pdf"></i><span class="d-none d-sm-inline ms-1">PDF</span></button>
+                        <button class="btn btn-sm btn-outline-success" onclick="exportCurrentTabExcel()"><i class="bi bi-file-earmark-excel"></i><span class="d-none d-sm-inline ms-1">Excel</span></button>
+                    </div>
+                </div>
+                <div class="d-flex flex-column flex-sm-row justify-content-end align-items-end align-items-sm-center gap-2">
+                    <input type="text" id="globalTabSearch" class="form-control form-control-sm w-100" placeholder="Search students..." style="max-width: 200px;">
+                    <div class="input-group input-group-sm w-100" style="max-width: 220px;">
                         <input type="date" id="syncDate" class="form-control" title="Select date for syncing attendance">
                         <button class="btn btn-outline-primary" id="syncGoogleBtn" onclick="syncToGoogle()"><i class="bi bi-cloud-upload"></i> Sync</button>
-                        <script>
-                            document.addEventListener('DOMContentLoaded', function() {
-                                const today = new Date().toISOString().split('T')[0];
-                                document.getElementById('syncDate').value = today;
-                                document.getElementById('syncDate').max = today;
-                            });
-                        </script>
                     </div>
                 </div>
             </div>
+            
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    const today = new Date().toISOString().split('T')[0];
+                    document.getElementById('syncDate').value = today;
+                    document.getElementById('syncDate').max = today;
+                });
+            </script>
             <div class="card-body p-0">
-                <ul class="nav nav-tabs nav-fill bg-light border-bottom-0" id="irregularitiesTab" role="tablist">
+                <ul class="nav nav-tabs nav-fill mb-0" id="irregularitiesTabs" role="tablist">
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link active text-danger fw-bold" id="yesterday-absent-tab" data-bs-toggle="tab" data-bs-target="#yesterday-absent" type="button" role="tab"><i class="bi bi-calendar-minus"></i> Yesterday's Absentees ({{ yesterdays_absentees|length }})</button>
+                        <button class="nav-link active text-dark fw-bold" id="yesterday-tab" data-bs-toggle="tab" data-bs-target="#yesterday-absent" type="button" role="tab">
+                            <span class="d-none d-sm-inline">Yesterday's Absentees</span><span class="d-inline d-sm-none">Yesterday</span>
+                        </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link text-danger fw-bold" id="today-absent-tab" data-bs-toggle="tab" data-bs-target="#today-absent" type="button" role="tab"><i class="bi bi-calendar-x"></i> Today's Absentees ({{ today_absentees|length }})</button>
+                        <button class="nav-link text-dark fw-bold" id="today-tab" data-bs-toggle="tab" data-bs-target="#today-absent" type="button" role="tab">
+                            <span class="d-none d-sm-inline">Today's Absentees</span><span class="d-inline d-sm-none">Today</span>
+                        </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link text-warning fw-bold" id="consec-absent-tab" data-bs-toggle="tab" data-bs-target="#consec-absent" type="button" role="tab"><i class="bi bi-person-x"></i> Consecutive Absences ({{ consecutive_absences|length }})</button>
+                        <button class="nav-link text-dark fw-bold" id="consec-tab" data-bs-toggle="tab" data-bs-target="#consec-absent" type="button" role="tab">
+                            <span class="d-none d-sm-inline">Consecutive Absences</span><span class="d-inline d-sm-none">Consecutive</span>
+                        </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link text-secondary fw-bold" id="risk-absent-tab" data-bs-toggle="tab" data-bs-target="#risk-absent" type="button" role="tab"><i class="bi bi-graph-down"></i> At Risk < 70% ({{ low_attendance|length }})</button>
+                        <button class="nav-link text-dark fw-bold" id="risk-tab" data-bs-toggle="tab" data-bs-target="#risk-absent" type="button" role="tab">
+                            <span class="d-none d-sm-inline">At Risk (< 70%)</span><span class="d-inline d-sm-none">At Risk</span>
+                        </button>
                     </li>
                 </ul>
                 <div class="tab-content p-3" id="irregularitiesTabContent">
                     <!-- Tab Yesterday -->
                     <div class="tab-pane fade show active" id="yesterday-absent" role="tabpanel">
                         <div id="yesterday_wrapper">
-                            <div class="table-responsive">
-                                <table class="table align-middle mb-0 bg-white" id="yesterday_table">
+                            <div>
+                                <table class="table align-middle mb-0 bg-white w-100" id="yesterday_table">
                                     <caption class="html2pdf-title" style="caption-side: top; color: #212529; text-align: left;">
                                         <h3 class="mb-1 fw-bold">Yesterday's Absentees Report</h3>
                                         <p class="text-muted small mb-3">Generated on: {{ date.today().strftime('%Y-%m-%d') if date else '' }}</p>
                                     </caption>
-                                <thead class="table-light"><tr><th>Reg ID</th><th>Name</th><th>Status</th><th>Contact</th></tr></thead>
+                                <thead class="table-light"><tr><th class="d-none d-sm-table-cell">Reg ID</th><th>Name</th><th>Status</th><th>Contact</th></tr></thead>
                                 <tbody>
                                     {% for rec in yesterdays_absentees %}
                                     <tr>
-                                        <td>{{ rec.student.registration_id }}</td>
+                                        <td class="d-none d-sm-table-cell">{{ rec.student.registration_id }}</td>
                                         <td>{{ rec.student.full_name }}</td>
                                         <td>
                                             <span class="badge {% if rec.absent_type == 'Full' %}bg-danger{% else %}bg-warning text-dark{% endif %}">Absent</span>
@@ -230,9 +242,10 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <a href="{{ rec.student | wa_link('yesterday') }}" target="_blank" class="btn btn-sm btn-success rounded-circle"><i class="bi bi-whatsapp"></i></a>
-                                            <a href="tel:{{ rec.student.phone }}" class="btn btn-sm btn-primary rounded-circle"><i class="bi bi-telephone"></i></a>
-                                            <span class="ms-1 small">{{ rec.student.phone }}</span>
+                                            <div class="d-flex align-items-center gap-1">
+                                                <a href="{{ rec.student | wa_link('yesterday') }}" target="_blank" class="btn btn-sm btn-success rounded-circle"><i class="bi bi-whatsapp"></i></a>
+                                                <a href="tel:{{ rec.student.phone }}" class="btn btn-sm btn-primary rounded-circle"><i class="bi bi-telephone"></i></a>
+                                            </div>
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -244,17 +257,17 @@
                     <!-- Tab Today -->
                     <div class="tab-pane fade" id="today-absent" role="tabpanel">
                         <div id="today_wrapper">
-                            <div class="table-responsive">
-                                <table class="table align-middle mb-0 bg-white" id="today_table">
+                            <div>
+                                <table class="table align-middle mb-0 bg-white w-100" id="today_table">
                                     <caption class="html2pdf-title" style="caption-side: top; color: #212529; text-align: left;">
                                         <h3 class="mb-1 fw-bold">Today's Absentees Report</h3>
                                         <p class="text-muted small mb-3">Generated on: {{ date.today().strftime('%Y-%m-%d') if date else '' }}</p>
                                     </caption>
-                                <thead class="table-light"><tr><th>Reg ID</th><th>Name</th><th>Status</th><th>Contact</th></tr></thead>
+                                <thead class="table-light"><tr><th class="d-none d-sm-table-cell">Reg ID</th><th>Name</th><th>Status</th><th>Contact</th></tr></thead>
                                 <tbody>
                                     {% for rec in today_absentees %}
                                     <tr>
-                                        <td>{{ rec.student.registration_id }}</td>
+                                        <td class="d-none d-sm-table-cell">{{ rec.student.registration_id }}</td>
                                         <td>{{ rec.student.full_name }}</td>
                                         <td>
                                             <span class="badge {% if rec.absent_type == 'Full' %}bg-danger{% else %}bg-warning text-dark{% endif %}">Absent</span>
@@ -263,9 +276,10 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <a href="{{ rec.student | wa_link('today') }}" target="_blank" class="btn btn-sm btn-success rounded-circle"><i class="bi bi-whatsapp"></i></a>
-                                            <a href="tel:{{ rec.student.phone }}" class="btn btn-sm btn-primary rounded-circle"><i class="bi bi-telephone"></i></a>
-                                            <span class="ms-1 small">{{ rec.student.phone }}</span>
+                                            <div class="d-flex align-items-center gap-1">
+                                                <a href="{{ rec.student | wa_link('today') }}" target="_blank" class="btn btn-sm btn-success rounded-circle"><i class="bi bi-whatsapp"></i></a>
+                                                <a href="tel:{{ rec.student.phone }}" class="btn btn-sm btn-primary rounded-circle"><i class="bi bi-telephone"></i></a>
+                                            </div>
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -277,23 +291,24 @@
                     <!-- Tab 2 -->
                     <div class="tab-pane fade" id="consec-absent" role="tabpanel">
                         <div id="consecutive_wrapper">
-                            <div class="table-responsive">
-                                <table class="table align-middle mb-0 bg-white" id="consecutive_table">
+                            <div>
+                                <table class="table align-middle mb-0 bg-white w-100" id="consecutive_table">
                                     <caption class="html2pdf-title" style="caption-side: top; color: #212529; text-align: left;">
                                         <h3 class="mb-1 fw-bold">Consecutive Absences Report</h3>
                                         <p class="text-muted small mb-3">Generated on: {{ date.today().strftime('%Y-%m-%d') if date else '' }}</p>
                                     </caption>
-                                <thead class="table-light"><tr><th>Reg ID</th><th>Name</th><th>Alert</th><th>Contact</th></tr></thead>
+                                <thead class="table-light"><tr><th class="d-none d-sm-table-cell">Reg ID</th><th>Name</th><th>Alert</th><th>Contact</th></tr></thead>
                                 <tbody>
                                     {% for stu in consecutive_absences %}
                                     <tr>
-                                        <td>{{ stu.registration_id }}</td>
+                                        <td class="d-none d-sm-table-cell">{{ stu.registration_id }}</td>
                                         <td>{{ stu.full_name }}</td>
                                         <td><span class="badge bg-danger">Consecutive Absences</span></td>
                                         <td>
-                                            <a href="{{ stu | wa_link('consecutive') }}" target="_blank" class="btn btn-sm btn-success rounded-circle"><i class="bi bi-whatsapp"></i></a>
-                                            <a href="tel:{{ stu.phone }}" class="btn btn-sm btn-primary rounded-circle"><i class="bi bi-telephone"></i></a>
-                                            <span class="ms-1 small">{{ stu.phone }}</span>
+                                            <div class="d-flex align-items-center gap-1">
+                                                <a href="{{ stu | wa_link('consecutive') }}" target="_blank" class="btn btn-sm btn-success rounded-circle"><i class="bi bi-whatsapp"></i></a>
+                                                <a href="tel:{{ stu.phone }}" class="btn btn-sm btn-primary rounded-circle"><i class="bi bi-telephone"></i></a>
+                                            </div>
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -305,23 +320,29 @@
                     <!-- Tab 3 -->
                     <div class="tab-pane fade" id="risk-absent" role="tabpanel">
                         <div id="risk_wrapper">
-                            <div class="table-responsive">
-                                <table class="table align-middle mb-0 bg-white" id="risk_table">
+                            <div>
+                                <table class="table align-middle mb-0 bg-white w-100" id="risk_table">
                                     <caption class="html2pdf-title" style="caption-side: top; color: #212529; text-align: left;">
                                         <h3 class="mb-1 fw-bold">At Risk (< 70%) Students Report</h3>
                                         <p class="text-muted small mb-3">Generated on: {{ date.today().strftime('%Y-%m-%d') if date else '' }}</p>
                                     </caption>
-                                <thead class="table-light"><tr><th>Reg ID</th><th>Name</th><th>Attendance</th><th>Contact</th></tr></thead>
+                                <thead class="table-light"><tr><th class="d-none d-sm-table-cell">Reg ID</th><th>Name</th><th>Attendance</th><th>Contact</th></tr></thead>
                                 <tbody>
                                     {% for item in low_attendance %}
                                     <tr>
-                                        <td>{{ item.student.registration_id }}</td>
+                                        <td class="d-none d-sm-table-cell">{{ item.student.registration_id }}</td>
                                         <td>{{ item.student.full_name }}</td>
-                                        <td><span class="text-danger fw-bold">{{ item.formatted }}</span></td>
                                         <td>
-                                            <a href="{{ item.student | wa_link('risk', item.formatted) }}" target="_blank" class="btn btn-sm btn-success rounded-circle"><i class="bi bi-whatsapp"></i></a>
-                                            <a href="tel:{{ item.student.phone }}" class="btn btn-sm btn-primary rounded-circle"><i class="bi bi-telephone"></i></a>
-                                            <span class="ms-1 small">{{ item.student.phone }}</span>
+                                            <span class="text-danger fw-bold">
+                                                <span class="d-none d-sm-inline">{{ item.formatted }}</span>
+                                                <span class="d-inline d-sm-none">{{ "%.0f"|format(item.percentage) }}%</span>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-1">
+                                                <a href="{{ item.student | wa_link('risk', item.formatted) }}" target="_blank" class="btn btn-sm btn-success rounded-circle"><i class="bi bi-whatsapp"></i></a>
+                                                <a href="tel:{{ item.student.phone }}" class="btn btn-sm btn-primary rounded-circle"><i class="bi bi-telephone"></i></a>
+                                            </div>
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -349,23 +370,25 @@
                     <table class="table align-middle mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th>Student (Reg ID)</th>
+                                <th>Student Name</th>
+                                <th class="d-none d-sm-table-cell">Reg ID</th>
                                 <th>Amount</th>
-                                <th>Method</th>
+                                <th class="d-none d-sm-table-cell">Method</th>
                                 <th>Date</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for fee in latest_fees %}
                             <tr>
-                                <td>{{ fee.student.full_name }} ({{ fee.student.registration_id }})</td>
+                                <td>{{ fee.student.full_name }}</td>
+                                <td class="d-none d-sm-table-cell">{{ fee.student.registration_id }}</td>
                                 <td class="text-success fw-bold">+Rs. {{ "%.2f"|format(fee.amount_paid) }}</td>
-                                <td><span class="badge bg-light text-dark border">{{ fee.payment_method }}</span></td>
-                                <td>{{ fee.date_collected.strftime('%Y-%m-%d') }}</td>
+                                <td class="d-none d-sm-table-cell"><span class="badge bg-light text-dark border">{{ fee.payment_method }}</span></td>
+                                <td>{{ fee.date_collected.strftime('%d %b, %Y') }}</td>
                             </tr>
                             {% else %}
                             <tr>
-                                <td colspan="4" class="text-center py-4">No fee collections yet.</td>
+                                <td colspan="5" class="text-center py-4">No fee collections yet.</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -388,7 +411,7 @@
                             <tr>
                                 <th>Expense Title</th>
                                 <th>Amount</th>
-                                <th>Course</th>
+                                <th class="d-none d-sm-table-cell">Course</th>
                                 <th>Date</th>
                             </tr>
                         </thead>
@@ -397,7 +420,11 @@
                             <tr>
                                 <td>{{ expense.title }}</td>
                                 <td class="text-danger fw-bold">-Rs. {{ "%.2f"|format(expense.amount) }}</td>
-                                <td><span class="badge bg-light text-dark border">{{ expense.course.name if expense.course else 'General' }}</span></td>
+                                <td class="d-none d-sm-table-cell">
+                                    <span class="badge bg-light text-dark border text-truncate d-inline-block align-middle" style="max-width: 120px;">
+                                        {{ expense.course.name if expense.course else 'General' }}
+                                    </span>
+                                </td>
                                 <td>{{ expense.expense_date.strftime('%Y-%m-%d') }}</td>
                             </tr>
                             {% else %}
@@ -677,9 +704,12 @@ function exportToPDF(wrapperId, filename) {
 
 <!-- DataTables CSS & JS -->
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css"/>
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css"/>
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
 <script type="text/javascript" src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script type="text/javascript" src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
 
 <script>
 $(document).ready(function() {

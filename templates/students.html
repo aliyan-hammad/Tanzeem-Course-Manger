@@ -1,13 +1,12 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Students Management</h2>
-    <div class="d-flex gap-3 align-items-center">
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <h2 class="mb-0">Students Management</h2>
+    <div class="d-flex flex-wrap gap-2 align-items-center">
         <form method="GET" action="{{ url_for('coordinator.students') }}" class="d-flex align-items-center gap-2">
             <label for="course_id" class="text-nowrap fw-bold mb-0">Course:</label>
-            <select class="form-select form-select-sm" id="course_id" name="course_id" onchange="this.form.submit()">
-
+            <select class="form-select form-select-sm" id="course_id" name="course_id" onchange="this.form.submit()" style="min-width: 150px;">
                 {% for course in courses %}
                 <option value="{{ course.id }}" {% if selected_course_id|string == course.id|string %}selected{% endif %}>{{ course.name }}</option>
                 {% endfor %}
@@ -21,19 +20,19 @@
 
 <div class="card shadow-sm border-0">
     <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0" id="studentsTable">
+        <div>
+            <table class="table table-hover align-middle mb-0 w-100 nowrap" id="studentsTable">
                 <thead class="table-light">
                     <tr>
-                        <th>Reg ID</th>
-                        <th>Full Name</th>
-                        <th>Father's Name</th>
-                        <th>Phone</th>
-                        <th>CNIC</th>
-                        <th>Course</th>
-                        <th>Status</th>
-                        <th>Enrollment Date</th>
-                        <th>Actions</th>
+                        <th data-priority="2">Reg ID</th>
+                        <th data-priority="1">Full Name</th>
+                        <th data-priority="3">Father's Name</th>
+                        <th data-priority="3">Phone</th>
+                        <th data-priority="4">CNIC</th>
+                        <th data-priority="4">Course</th>
+                        <th data-priority="3">Status</th>
+                        <th data-priority="4">Enrollment Date</th>
+                        <th data-priority="1">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -262,12 +261,16 @@
 {% block scripts %}
 <!-- DataTables CSS & JS -->
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css"/>
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css"/>
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
 <script type="text/javascript" src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script type="text/javascript" src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
 <script>
 $(document).ready(function() {
     $('#studentsTable').DataTable({
+                responsive: true,
         "pageLength": 10,
         "lengthChange": false,
         "order": [[ 7, "desc" ]], // Order by Enrollment Date descending

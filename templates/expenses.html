@@ -1,19 +1,19 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Expenses Tracking</h2>
-    <div class="d-flex gap-3 align-items-center">
-        <form method="GET" action="{{ url_for('coordinator.expenses') }}" class="d-flex align-items-center gap-2">
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <h2 class="mb-0">Expenses Tracking</h2>
+    <div class="d-flex flex-wrap gap-3 align-items-center">
+        <form method="GET" action="{{ url_for('coordinator.expenses') }}" class="d-flex flex-wrap align-items-center gap-2">
             <label for="course_id" class="text-nowrap fw-bold mb-0">Course:</label>
-            <select class="form-select form-select-sm" id="course_id" name="course_id" onchange="this.form.submit()">
+            <select class="form-select form-select-sm" id="course_id" name="course_id" onchange="this.form.submit()" style="min-width: 120px; max-width: 200px;">
                 {% for course in courses %}
                 <option value="{{ course.id }}" {% if selected_course_id|string == course.id|string %}selected{% endif %}>{{ course.name }}</option>
                 {% endfor %}
             </select>
             
-            <label for="expense_month" class="text-nowrap fw-bold mb-0 ms-2">Month:</label>
-            <input type="month" class="form-control form-control-sm" id="expense_month" name="expense_month" value="{{ selected_month }}" onchange="this.form.submit()">
+            <label for="expense_month" class="text-nowrap fw-bold mb-0 ms-sm-2">Month:</label>
+            <input type="month" class="form-control form-control-sm" id="expense_month" name="expense_month" value="{{ selected_month }}" onchange="this.form.submit()" style="max-width: 150px;">
         </form>
         {% if current_user.role == 'Coordinator' %}
         <button class="btn btn-danger text-nowrap" data-bs-toggle="modal" data-bs-target="#addExpenseModal">
@@ -25,16 +25,16 @@
 
 <div class="card shadow-sm border-0">
     <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0" id="expensesTable">
+        <div>
+            <table class="table table-hover align-middle mb-0 w-100 nowrap" id="expensesTable">
                 <thead class="table-light">
                     <tr>
-                        <th>Expense ID</th>
-                        <th>Title / Description</th>
-                        <th>Course Attachment</th>
-                        <th>Payment Method</th>
-                        <th>Amount</th>
-                        <th>Date</th>
+                        <th data-priority="4">Expense ID</th>
+                        <th data-priority="1">Title / Description</th>
+                        <th data-priority="2">Course Attachment</th>
+                        <th data-priority="4">Payment Method</th>
+                        <th data-priority="1">Amount</th>
+                        <th data-priority="2">Date</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -348,12 +348,16 @@ function toggleCustomTitle(selectEl, divId) {
 </script>
 <!-- DataTables CSS & JS -->
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css"/>
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css"/>
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
 <script type="text/javascript" src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script type="text/javascript" src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
 <script>
 $(document).ready(function() {
     $('#expensesTable').DataTable({
+                responsive: true,
         "pageLength": 10,
         "lengthChange": false,
         "order": [[ 5, "desc" ]], // Order by Date descending
