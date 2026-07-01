@@ -230,7 +230,7 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <a href="https://wa.me/92{{ rec.student.phone[1:] if rec.student.phone.startswith('0') else rec.student.phone }}" target="_blank" class="btn btn-sm btn-success rounded-circle"><i class="bi bi-whatsapp"></i></a>
+                                            <a href="{{ rec.student | wa_link('yesterday') }}" target="_blank" class="btn btn-sm btn-success rounded-circle"><i class="bi bi-whatsapp"></i></a>
                                             <a href="tel:{{ rec.student.phone }}" class="btn btn-sm btn-primary rounded-circle"><i class="bi bi-telephone"></i></a>
                                             <span class="ms-1 small">{{ rec.student.phone }}</span>
                                         </td>
@@ -263,7 +263,7 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <a href="https://wa.me/92{{ rec.student.phone[1:] if rec.student.phone.startswith('0') else rec.student.phone }}" target="_blank" class="btn btn-sm btn-success rounded-circle"><i class="bi bi-whatsapp"></i></a>
+                                            <a href="{{ rec.student | wa_link('today') }}" target="_blank" class="btn btn-sm btn-success rounded-circle"><i class="bi bi-whatsapp"></i></a>
                                             <a href="tel:{{ rec.student.phone }}" class="btn btn-sm btn-primary rounded-circle"><i class="bi bi-telephone"></i></a>
                                             <span class="ms-1 small">{{ rec.student.phone }}</span>
                                         </td>
@@ -291,7 +291,7 @@
                                         <td>{{ stu.full_name }}</td>
                                         <td><span class="badge bg-danger">Consecutive Absences</span></td>
                                         <td>
-                                            <a href="https://wa.me/92{{ stu.phone[1:] if stu.phone.startswith('0') else stu.phone }}" target="_blank" class="btn btn-sm btn-success rounded-circle"><i class="bi bi-whatsapp"></i></a>
+                                            <a href="{{ stu | wa_link('consecutive') }}" target="_blank" class="btn btn-sm btn-success rounded-circle"><i class="bi bi-whatsapp"></i></a>
                                             <a href="tel:{{ stu.phone }}" class="btn btn-sm btn-primary rounded-circle"><i class="bi bi-telephone"></i></a>
                                             <span class="ms-1 small">{{ stu.phone }}</span>
                                         </td>
@@ -319,7 +319,7 @@
                                         <td>{{ item.student.full_name }}</td>
                                         <td><span class="text-danger fw-bold">{{ item.formatted }}</span></td>
                                         <td>
-                                            <a href="https://wa.me/92{{ item.student.phone[1:] if item.student.phone.startswith('0') else item.student.phone }}" target="_blank" class="btn btn-sm btn-success rounded-circle"><i class="bi bi-whatsapp"></i></a>
+                                            <a href="{{ item.student | wa_link('risk', item.formatted) }}" target="_blank" class="btn btn-sm btn-success rounded-circle"><i class="bi bi-whatsapp"></i></a>
                                             <a href="tel:{{ item.student.phone }}" class="btn btn-sm btn-primary rounded-circle"><i class="bi bi-telephone"></i></a>
                                             <span class="ms-1 small">{{ item.student.phone }}</span>
                                         </td>

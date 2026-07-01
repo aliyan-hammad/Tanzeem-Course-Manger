@@ -46,6 +46,41 @@ def create_app():
             return dict(global_pending_requests_count=count)
         return dict(global_pending_requests_count=0)
 
+    @app.template_filter('wa_link')
+    def wa_link(student, msg_type, extra_info=""):
+        import urllib.parse
+        import re
+        from datetime import date
+        
+        phone = student.phone
+        name = student.full_name
+        course_name = student.course.name if student.course else "your enrolled course"
+        
+        clean_phone = re.sub(r'\D', '', str(phone))
+        if clean_phone.startswith('92') and len(clean_phone) >= 12:
+            pass
+        elif clean_phone.startswith('0'):
+            clean_phone = '92' + clean_phone[1:]
+        else:
+            if len(clean_phone) == 10:  # e.g. 3001234567
+                clean_phone = '92' + clean_phone
+            
+        today_str = date.today().strftime('%d %B, %Y')
+        
+        if msg_type == 'yesterday':
+            text = f"Dear {name},\n\nThis is an official notification from Adminitration.\nWe noticed you were absent from your '{course_name}' yesterday. Regular attendance is crucial for your success. Please ensure you do not miss your upcoming classes.\n\nRegards,\nCoordinator"
+        elif msg_type == 'today':
+            text = f"Dear {name},\n\nThis is an official notification from Adminitration.\nYou have been marked absent today ({today_str}) in your '{course_name}'. Please make sure to attend the upcoming classes to stay on track.\n\nRegards,\nCoordinator"
+        elif msg_type == 'consecutive':
+            text = f"Dear {name},\n\nURGENT: This is an official notice from Adminitration regarding your '{course_name}'.\nYou have been consecutively absent from your recent classes. Please contact your coordinator immediately to explain your absence, otherwise strict action may be taken.\n\nRegards,\nCoordinator"
+        elif msg_type == 'risk':
+            text = f"Dear {name},\n\nATTENTION: This is an official alert from Adminitration.\nYour overall attendance in the '{course_name}' class has fallen to {extra_info}, which is critically below the 70% requirement. Immediate improvement is required to maintain your active enrollment status.\n\nRegards,\nCoordinator"
+        else:
+            text = f"Dear {name},\n\nThis is a message from Adminitration."
+            
+        encoded_text = urllib.parse.quote(text)
+        return f"https://wa.me/{clean_phone}?text={encoded_text}"
+
     # Initialize Database & Seeds
     with app.app_context():
         db.create_all()
