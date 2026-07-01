@@ -68,15 +68,15 @@ def create_app():
         today_str = date.today().strftime('%d %B, %Y')
         
         if msg_type == 'yesterday':
-            text = f"Dear {name},\n\nThis is an official notification from Adminitration.\nWe noticed you were absent from your '{course_name}' yesterday. Regular attendance is crucial for your success. Please ensure you do not miss your upcoming classes.\n\nRegards,\nCoordinator"
+            text = f"*Assalam-o-Alaikum {name},*\n\nThis is an official notification from the Administration.\nWe missed your presence yesterday in *'{course_name}'*. We hope everything is fine at your end. May Allah bless you, and we look forward to seeing you in today's sessions! InShaAllah.\n\nRegards,\n_Coordinator_"
         elif msg_type == 'today':
-            text = f"Dear {name},\n\nThis is an official notification from Adminitration.\nYou have been marked absent today ({today_str}) in your '{course_name}'. Please make sure to attend the upcoming classes to stay on track.\n\nRegards,\nCoordinator"
+            text = f"*Assalam-o-Alaikum {name},*\n\nThis is an official notification from the Administration.\nWe missed you today in *'{course_name}'*. Learning the Quran is a great blessing, and we hope to see you in the next sessions! JazakAllah.\n\nRegards,\n_Coordinator_"
         elif msg_type == 'consecutive':
-            text = f"Dear {name},\n\nURGENT: This is an official notice from Adminitration regarding your '{course_name}'.\nYou have been consecutively absent from your recent classes. Please contact your coordinator immediately to explain your absence, otherwise strict action may be taken.\n\nRegards,\nCoordinator"
+            text = f"*Assalam-o-Alaikum {name},*\n\n*URGENT:* This is an official notice from the Administration regarding your *'{course_name}'* class.\nYou have been consecutively absent from your recent classes. We hope you and your family are in good health. Please contact your coordinator so we can help you stay connected with the Quran.\n\nRegards,\n_Coordinator_"
         elif msg_type == 'risk':
-            text = f"Dear {name},\n\nATTENTION: This is an official alert from Adminitration.\nYour overall attendance in the '{course_name}' class has fallen to {extra_info}, which is critically below the 70% requirement. Immediate improvement is required to maintain your active enrollment status.\n\nRegards,\nCoordinator"
+            text = f"*Assalam-o-Alaikum {name},*\n\n*ATTENTION:* This is a gentle reminder from the Administration.\nYour overall attendance in *'{course_name}'* is currently at *{extra_info}*. Consistency brings Barakah to our learning. Please try to attend regularly to maintain your course registration. May Allah make it easy for you.\n\nRegards,\n_Coordinator_"
         else:
-            text = f"Dear {name},\n\nThis is a message from Adminitration."
+            text = f"*Assalam-o-Alaikum {name},*\n\nThis is a message from the Administration."
             
         encoded_text = urllib.parse.quote(text)
         return f"https://wa.me/{clean_phone}?text={encoded_text}"
