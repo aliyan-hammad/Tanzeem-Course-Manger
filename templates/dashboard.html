@@ -3,7 +3,6 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4 gap-2">
     <h2 class="text-truncate flex-grow-1 mb-0" style="min-width: 0;">{% if current_user.role == 'Admin' %}System Overview Dashboard{% else %}Coordinator Workspace{% endif %}</h2>
-    <span class="badge bg-secondary p-2 text-truncate" style="max-width: 150px;"><i class="bi bi-person-circle"></i> {{ current_user.full_name if current_user.full_name else current_user.username }}</span>
 </div>
 
 <!-- Dashboard Filters -->
@@ -39,35 +38,35 @@
 {% if current_user.role == 'Admin' %}
 <div class="row g-4 mb-4">
     <div class="col-12 col-sm-6 col-lg-3">
-        <div class="card bg-primary text-white shadow-sm border-0 h-100">
+        <div class="card bg-white text-dark shadow-sm border-0 h-100">
             <div class="card-body py-3">
-                <h6 class="text-uppercase text-white-50 small mb-1">Total Active Students</h6>
-                <h3 class="mb-0 fw-bold">{{ total_active_students }}</h3>
+                <h6 class="text-uppercase text-muted small mb-1">Total Active Students</h6>
+                <h3 class="mb-0 fw-bold text-primary">{{ total_active_students }}</h3>
             </div>
         </div>
     </div>
     <div class="col-12 col-sm-6 col-lg-3">
-        <div class="card bg-success text-white shadow-sm border-0 h-100">
+        <div class="card bg-white text-dark shadow-sm border-0 h-100">
             <div class="card-body py-3">
-                <h6 class="text-uppercase text-white-50 small mb-1">Total Fee Collected</h6>
-                <h3 class="mb-0 fw-bold">Rs. {{ "%.2f"|format(total_fees) }}</h3>
-                <small class="text-white-50 mt-2 d-block"><i class="bi bi-people-fill"></i> {{ students_paid_count }} Students Paid</small>
+                <h6 class="text-uppercase text-muted small mb-1">Total Fee Collected</h6>
+                <h3 class="mb-0 fw-bold text-success">Rs. {{ "%.2f"|format(total_fees) }}</h3>
+                <small class="text-muted mt-2 d-block"><i class="bi bi-people-fill"></i> {{ students_paid_count }} Students Paid</small>
             </div>
         </div>
     </div>
     <div class="col-12 col-sm-6 col-lg-3">
-        <div class="card bg-danger text-white shadow-sm border-0 h-100">
+        <div class="card bg-white text-dark shadow-sm border-0 h-100">
             <div class="card-body py-3">
-                <h6 class="text-uppercase text-white-50 small mb-1">Total Expenses</h6>
-                <h3 class="mb-0 fw-bold">Rs. {{ "%.2f"|format(total_expenses) }}</h3>
+                <h6 class="text-uppercase text-muted small mb-1">Total Expenses</h6>
+                <h3 class="mb-0 fw-bold text-danger">Rs. {{ "%.2f"|format(total_expenses) }}</h3>
             </div>
         </div>
     </div>
     <div class="col-12 col-sm-6 col-lg-3">
-        <div class="card bg-secondary text-white shadow-sm border-0 h-100">
+        <div class="card bg-white text-dark shadow-sm border-0 h-100">
             <div class="card-body py-3">
-                <h6 class="text-uppercase text-white-50 small mb-1">Net Balance</h6>
-                <h3 class="mb-0 fw-bold">Rs. {{ "%.2f"|format(net_balance) }}</h3>
+                <h6 class="text-uppercase text-muted small mb-1">Net Balance</h6>
+                <h3 class="mb-0 fw-bold text-secondary">Rs. {{ "%.2f"|format(net_balance) }}</h3>
             </div>
         </div>
     </div>
@@ -110,60 +109,60 @@
 {% else %}
 <div class="row g-4 mb-4">
     <div class="col-12 col-sm-6 col-lg-3">
-        <div class="card bg-success text-white shadow-sm border-0 h-100">
+        <div class="card bg-white text-dark shadow-sm border-0 h-100">
             <div class="card-body">
-                <h6 class="text-uppercase text-white-50 small mb-1">Today's Collections</h6>
-                <h3 class="mb-0 fw-bold">Rs. {{ "%.2f"|format(today_collections) }}</h3>
+                <h6 class="text-uppercase text-muted small mb-1">Today's Collections</h6>
+                <h3 class="mb-0 fw-bold text-success">Rs. {{ "%.2f"|format(today_collections) }}</h3>
             </div>
         </div>
     </div>
     <div class="col-12 col-sm-6 col-lg-3">
-        <div class="card bg-primary text-white shadow-sm border-0 h-100">
+        <div class="card bg-white text-dark shadow-sm border-0 h-100">
             <div class="card-body">
-                <h6 class="text-uppercase text-white-50 small mb-1">This Month's Collections</h6>
-                <h3 class="mb-0 fw-bold">Rs. {{ "%.2f"|format(monthly_collections) }}</h3>
+                <h6 class="text-uppercase text-muted small mb-1">This Month's Collections</h6>
+                <h3 class="mb-0 fw-bold text-primary">Rs. {{ "%.2f"|format(monthly_collections) }}</h3>
             </div>
         </div>
     </div>
     <div class="col-12 col-sm-6 col-lg-3">
-        <div class="card bg-danger text-white shadow-sm border-0 h-100">
+        <div class="card bg-white text-dark shadow-sm border-0 h-100">
             <div class="card-body">
-                <h6 class="text-uppercase text-white-50 small mb-1">Total Expenses Logged</h6>
-                <h3 class="mb-0 fw-bold">Rs. {{ "%.2f"|format(expenses_added) }}</h3>
+                <h6 class="text-uppercase text-muted small mb-1">Total Expenses Logged</h6>
+                <h3 class="mb-0 fw-bold text-danger">Rs. {{ "%.2f"|format(expenses_added) }}</h3>
             </div>
         </div>
     </div>
     <div class="col-12 col-sm-6 col-lg-3">
-        <div class="card bg-secondary text-white shadow-sm border-0 h-100">
+        <div class="card bg-white text-dark shadow-sm border-0 h-100">
             <div class="card-body">
-                <h6 class="text-uppercase text-white-50 small mb-1">Net Balance</h6>
-                <h3 class="mb-0 fw-bold">Rs. {{ "%.2f"|format(net_balance) }}</h3>
+                <h6 class="text-uppercase text-muted small mb-1">Net Balance</h6>
+                <h3 class="mb-0 fw-bold text-secondary">Rs. {{ "%.2f"|format(net_balance) }}</h3>
             </div>
         </div>
     </div>
 </div>
 <div class="row g-4 mb-4">
     <div class="col-md-4">
-        <div class="card bg-info text-white shadow-sm border-0 h-100">
+        <div class="card bg-white text-dark shadow-sm border-0 h-100">
             <div class="card-body">
-                <h6 class="text-uppercase text-white-50 small mb-1"><i class="bi bi-cash"></i> Hand Cash (Filtered)</h6>
-                <h3 class="mb-0 fw-bold">Rs. {{ "%.2f"|format(hand_cash) }}</h3>
+                <h6 class="text-uppercase text-muted small mb-1"><i class="bi bi-cash"></i> Hand Cash (Filtered)</h6>
+                <h3 class="mb-0 fw-bold text-info">Rs. {{ "%.2f"|format(hand_cash) }}</h3>
             </div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card bg-dark text-white shadow-sm border-0 h-100">
+        <div class="card bg-white text-dark shadow-sm border-0 h-100">
             <div class="card-body">
-                <h6 class="text-uppercase text-white-50 small mb-1"><i class="bi bi-bank"></i> In Account (Filtered)</h6>
-                <h3 class="mb-0 fw-bold">Rs. {{ "%.2f"|format(in_account) }}</h3>
+                <h6 class="text-uppercase text-muted small mb-1"><i class="bi bi-bank"></i> In Account (Filtered)</h6>
+                <h3 class="mb-0 fw-bold text-dark">Rs. {{ "%.2f"|format(in_account) }}</h3>
             </div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card bg-success bg-opacity-75 text-white shadow-sm border-0 h-100">
+        <div class="card bg-white text-dark shadow-sm border-0 h-100">
             <div class="card-body">
-                <h6 class="text-uppercase text-white-50 small mb-1"><i class="bi bi-people"></i> Students Paid (Filtered)</h6>
-                <h3 class="mb-0 fw-bold">{{ students_paid_count }}</h3>
+                <h6 class="text-uppercase text-muted small mb-1"><i class="bi bi-people"></i> Students Paid (Filtered)</h6>
+                <h3 class="mb-0 fw-bold text-success">{{ students_paid_count }}</h3>
             </div>
         </div>
     </div>
