@@ -1,6 +1,16 @@
 {% extends "base.html" %}
 
 {% block content %}
+{% if not courses %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <h2 class="mb-0">Students Management</h2>
+</div>
+<div class="alert alert-info text-center shadow-sm border-0 rounded-3 mt-5 p-5">
+    <i class="bi bi-journal-x display-1 text-info d-block mb-3 opacity-50"></i>
+    <h3 class="alert-heading fw-bold text-dark mb-3">No Courses Assigned Yet</h3>
+    <p class="text-muted fs-5 mb-0">Your workspace is ready, but you haven't been assigned to any active courses yet. Once an administrator assigns a course to your account, you will be able to manage everything right here.</p>
+</div>
+{% else %}
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
     <h2 class="mb-0">Students Management</h2>
     <div class="d-flex flex-wrap gap-2 align-items-center">
@@ -256,6 +266,7 @@
         </div>
     </div>
 </div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}

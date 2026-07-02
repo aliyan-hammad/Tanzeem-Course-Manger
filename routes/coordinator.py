@@ -243,8 +243,7 @@ def attendance():
         courses = Course.query.filter_by(status='Active').all()
 
     if not courses:
-        flash('No courses assigned or available.', 'warning')
-        return redirect(url_for('coordinator.dashboard'))
+        return render_template('attendance.html', courses=[], active_course=None, sessions=[], selected_date=date.today().strftime('%Y-%m-%d'), today=date.today().strftime('%Y-%m-%d'), json=json, pagination=None)
 
     selected_course_id = request.args.get('course_id')
     if not selected_course_id and request.method == 'GET':
