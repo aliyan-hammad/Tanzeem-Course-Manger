@@ -74,22 +74,22 @@
 <ul class="nav nav-tabs mb-3" id="reportsTab" role="tablist">
     <li class="nav-item" role="presentation">
         <button class="nav-link active" id="students-tab" data-bs-toggle="tab" data-bs-target="#students" type="button" role="tab" aria-controls="students" aria-selected="true">
-            <i class="bi bi-people"></i> Master Student Registry
+            <i class="bi bi-people"></i> <span class="d-none d-sm-inline">Master </span>Students<span class="d-none d-sm-inline"> Registry</span>
         </button>
     </li>
     <li class="nav-item" role="presentation">
         <button class="nav-link" id="fees-tab" data-bs-toggle="tab" data-bs-target="#fees" type="button" role="tab" aria-controls="fees" aria-selected="false">
-            <i class="bi bi-cash-coin"></i> Fee Collection Logs
+            <i class="bi bi-cash-coin"></i> Fees<span class="d-none d-sm-inline"> Collection Logs</span>
         </button>
     </li>
     <li class="nav-item" role="presentation">
         <button class="nav-link" id="expenses-tab" data-bs-toggle="tab" data-bs-target="#expenses" type="button" role="tab" aria-controls="expenses" aria-selected="false">
-            <i class="bi bi-cart-dash"></i> Expenses Ledger
+            <i class="bi bi-cart-dash"></i> Expenses<span class="d-none d-sm-inline"> Ledger</span>
         </button>
     </li>
     <li class="nav-item" role="presentation">
         <button class="nav-link" id="attendance-tab" data-bs-toggle="tab" data-bs-target="#attendance" type="button" role="tab" aria-controls="attendance" aria-selected="false">
-            <i class="bi bi-calendar-check"></i> Attendance Summary
+            <i class="bi bi-calendar-check"></i> Attendance<span class="d-none d-sm-inline"> Summary</span>
         </button>
     </li>
 </ul>
@@ -115,8 +115,8 @@
                     <h3>Student Registry Report</h3>
                     <p class="text-muted">Generated on: {{ date.today if date else '' }}</p>
                 </div>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0" id="studentsTable">
+                <div>
+                    <table class="table table-hover align-middle mb-0 w-100 nowrap" id="studentsTable">
                         <thead class="table-light">
                             <tr>
                                 <th>Reg ID</th>
@@ -151,10 +151,6 @@
                                 </td>
                                 <td>{{ student.enrollment_date.strftime('%Y-%m-%d') }}</td>
                             </tr>
-                            {% else %}
-                            <tr>
-                                <td colspan="8" class="text-center py-4">No students found for this filter.</td>
-                            </tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -182,18 +178,18 @@
                     <h3>Fee Collection Report</h3>
                     <p class="text-muted">Period: {{ start_date }} to {{ end_date }}</p>
                 </div>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0" id="feesTable">
+                <div>
+                    <table class="table table-hover align-middle mb-0 w-100 nowrap" id="feesTable">
                         <thead class="table-light">
                             <tr>
-                                <th>Receipt No</th>
-                                <th>Reg ID</th>
-                                <th>Student Name</th>
-                                <th>Course</th>
-                                <th>Payment Method</th>
-                                <th>Collected By</th>
-                                <th>Amount Paid</th>
-                                <th>Date Collected</th>
+                                <th data-priority="4">Receipt No</th>
+                                <th data-priority="5">Reg ID</th>
+                                <th data-priority="1">Student Name</th>
+                                <th data-priority="6">Course</th>
+                                <th data-priority="7">Payment Method</th>
+                                <th data-priority="8">Collected By</th>
+                                <th data-priority="1">Amount Paid</th>
+                                <th data-priority="2">Date Collected</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -213,10 +209,6 @@
                                 </td>
                                 <td class="text-success fw-bold">Rs. {{ "%.2f"|format(fee.amount_paid) }}</td>
                                 <td>{{ fee.date_collected.strftime('%Y-%m-%d %H:%M') }}</td>
-                            </tr>
-                            {% else %}
-                            <tr>
-                                <td colspan="7" class="text-center py-4">No fee transactions found within this date range.</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -245,16 +237,16 @@
                     <h3>Expenses Ledger Report</h3>
                     <p class="text-muted">Period: {{ start_date }} to {{ end_date }}</p>
                 </div>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0" id="expensesTable">
+                <div>
+                    <table class="table table-hover align-middle mb-0 w-100 nowrap" id="expensesTable">
                         <thead class="table-light">
                             <tr>
-                                <th>Expense ID</th>
-                                <th>Title / Description</th>
-                                <th>Associated Course</th>
-                                <th>Payment Method</th>
-                                <th>Amount</th>
-                                <th>Date</th>
+                                <th data-priority="5">ID</th>
+                                <th data-priority="1">Expense Title</th>
+                                <th data-priority="3">Associated Course</th>
+                                <th data-priority="4">Payment Method</th>
+                                <th data-priority="1">Amount</th>
+                                <th data-priority="2">Date</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -266,10 +258,6 @@
                                 <td><span class="badge bg-light text-dark border">{{ exp.payment_method }}</span></td>
                                 <td class="text-danger fw-bold">Rs. {{ "%.2f"|format(exp.amount) }}</td>
                                 <td>{{ exp.expense_date.strftime('%Y-%m-%d') }}</td>
-                            </tr>
-                            {% else %}
-                            <tr>
-                                <td colspan="6" class="text-center py-4">No expenses found within this date range.</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -302,8 +290,8 @@
                     <h3>Student Attendance Summary {% if selected_subject %}- {{ selected_subject }}{% else %}- All Subjects{% endif %}</h3>
                     <p class="text-muted">Period: {{ start_date }} to {{ end_date }}</p>
                 </div>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0" id="attendanceTable">
+                <div>
+                    <table class="table table-hover align-middle mb-0 w-100 nowrap" id="attendanceTable">
                         <thead class="table-light">
                             <tr>
                                 <th>Reg ID</th>
@@ -330,10 +318,6 @@
                                     {% set perc = stat.calc.percentage %}
                                     <span class="{% if perc >= 75 %}text-success{% else %}text-danger{% endif %}">{{ stat.calc.formatted }}</span>
                                 </td>
-                            </tr>
-                            {% else %}
-                            <tr>
-                                <td colspan="8" class="text-center py-4">No attendance registries recorded within this date range.</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -363,6 +347,7 @@
 
 <script>
 const dtOptions = {
+    responsive: true,
     pageLength: 10,
     lengthChange: false,
     language: {
@@ -461,6 +446,9 @@ document.addEventListener("DOMContentLoaded", function() {
             var target = e.target.getAttribute('data-bs-target');
             sessionStorage.setItem('reportsActiveTab', target);
             toggleSubjectFilter(target);
+            
+            // Recalculate DataTables responsive layout for newly visible tab
+            $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust().responsive.recalc();
         });
     });
     

@@ -24,18 +24,18 @@
     <div class="tab-pane fade show active" id="pending" role="tabpanel" aria-labelledby="pending-tab">
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
+                <div>
+                    <table class="table table-hover align-middle mb-0 w-100 nowrap" id="pendingRequestsTable">
                         <thead class="table-light">
                             <tr>
-                                <th>ID</th>
-                                <th>Type</th>
-                                <th>Module</th>
-                                <th>Record ID</th>
-                                <th>Requested By</th>
-                                <th>Reason</th>
-                                <th>Submitted At</th>
-                                <th class="text-end">Actions</th>
+                                <th data-priority="5">ID</th>
+                                <th data-priority="1">Type</th>
+                                <th data-priority="1">Module</th>
+                                <th data-priority="6">Record ID</th>
+                                <th data-priority="4">Requested By</th>
+                                <th data-priority="3">Reason</th>
+                                <th data-priority="4">Submitted At</th>
+                                <th class="text-end" data-priority="1">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -57,10 +57,6 @@
                                         Review & Action
                                     </button>
                                 </td>
-                            </tr>
-                            {% else %}
-                            <tr>
-                                <td colspan="8" class="text-center py-4 text-muted">No pending workflow requests found.</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -207,20 +203,20 @@
     <div class="tab-pane fade" id="history" role="tabpanel" aria-labelledby="history-tab">
         <div class="card border-0 shadow-sm">
             <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
+                <div>
+                    <table class="table table-hover align-middle mb-0 w-100 nowrap" id="historyRequestsTable">
                         <thead class="table-light">
                             <tr>
-                                <th>Req ID</th>
-                                <th>Type</th>
-                                <th>Module</th>
-                                <th>Record ID</th>
-                                <th>Requested By</th>
-                                <th>Reason</th>
-                                <th>Status</th>
-                                <th>Processed By</th>
-                                <th>Date Processed</th>
-                                <th>Admin Notes</th>
+                                <th data-priority="6">Req ID</th>
+                                <th data-priority="1">Type</th>
+                                <th data-priority="1">Module</th>
+                                <th data-priority="7">Record ID</th>
+                                <th data-priority="4">Requested By</th>
+                                <th data-priority="3">Reason</th>
+                                <th data-priority="2">Status</th>
+                                <th data-priority="5">Processed By</th>
+                                <th data-priority="5">Date Processed</th>
+                                <th data-priority="3">Admin Notes</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -245,10 +241,6 @@
                                 <td>{{ req.actioned_at.strftime('%Y-%m-%d %H:%M') if req.actioned_at else '-' }}</td>
                                 <td><small class="text-muted">{{ req.admin_notes if req.admin_notes else '-' }}</small></td>
                             </tr>
-                            {% else %}
-                            <tr>
-                                <td colspan="10" class="text-center py-4 text-muted">No historical request workflows found.</td>
-                            </tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -257,4 +249,41 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css"/>
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css"/>
+<script type="text/javascript" src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    const dtOptions = {
+        responsive: true,
+        pageLength: 10,
+        lengthChange: false,
+        order: [[0, 'desc']],
+        language: {
+            search: "Search Requests:"
+        },
+        dom: "<'row px-3 pt-3'<'col-sm-12 col-md-6'><'col-sm-12 col-md-6'f>>" +
+             "<'row'<'col-sm-12'tr>>" +
+             "<'row px-3 pb-3 pt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
+    };
+
+    $('#pendingRequestsTable, #historyRequestsTable').DataTable(dtOptions);
+
+    // Re-adjust responsive layout when switching tabs
+    var tabElements = document.querySelectorAll('button[data-bs-toggle="tab"]');
+    tabElements.forEach(function(el) {
+        el.addEventListener('shown.bs.tab', function (e) {
+            $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust().responsive.recalc();
+        });
+    });
+});
+</script>
 {% endblock %}

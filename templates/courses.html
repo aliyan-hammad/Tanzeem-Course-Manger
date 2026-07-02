@@ -1,26 +1,26 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Course Management</h2>
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCourseModal">
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <h2 class="mb-0">Course Management</h2>
+    <button class="btn btn-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#addCourseModal">
         <i class="bi bi-plus-circle"></i> Add New Course
     </button>
 </div>
 
 <div class="card shadow-sm border-0">
     <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
+        <div>
+            <table class="table table-hover align-middle mb-0 w-100 nowrap" id="coursesTable">
                 <thead class="table-light">
                     <tr>
-                        <th>ID</th>
-                        <th>Course Title</th>
-                        <th>Batch</th>
-                        <th>Assigned Coordinator</th>
-                        <th>Base Fee</th>
-                        <th>Status</th>
-                        <th>Actions</th>
+                        <th data-priority="4">ID</th>
+                        <th data-priority="1">Course Title</th>
+                        <th data-priority="3">Batch</th>
+                        <th data-priority="2">Assigned Coordinator</th>
+                        <th data-priority="3">Base Fee</th>
+                        <th data-priority="2">Status</th>
+                        <th data-priority="1">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -50,10 +50,6 @@
                                 <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
                             </form>
                         </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="7" class="text-center py-4">No courses registered yet.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -299,5 +295,28 @@ function addSubjectField(containerId) {
     `;
     container.appendChild(div);
 }
+</script>
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css"/>
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css"/>
+<script type="text/javascript" src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
+<script>
+$(document).ready(function() {
+    $('#coursesTable').DataTable({
+        responsive: true,
+        pageLength: 10,
+        lengthChange: false,
+        order: [[0, 'desc']],
+        language: {
+            search: "Search Courses:"
+        },
+        dom: "<'row px-3 pt-3'<'col-sm-12 col-md-6'><'col-sm-12 col-md-6'f>>" +
+             "<'row'<'col-sm-12'tr>>" +
+             "<'row px-3 pb-3 pt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
+    });
+});
 </script>
 {% endblock %}

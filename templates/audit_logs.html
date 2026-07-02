@@ -50,10 +50,10 @@
                     <tr>
                         <th style="width: 15%;">Timestamp</th>
                         <th style="width: 15%;">User Account</th>
-                        <th style="width: 12%;">Role</th>
+                        <th class="d-none d-sm-table-cell" style="width: 12%;">Role</th>
                         <th style="width: 12%;">Action</th>
                         <th style="width: 10%;">Module</th>
-                        <th style="width: 8%;">Ref ID</th>
+                        <th class="d-none d-sm-table-cell" style="width: 8%;">Ref ID</th>
                         <th>Remarks / Modifications Summary</th>
                     </tr>
                 </thead>
@@ -67,7 +67,7 @@
                             <span class="text-muted d-block small">{{ log.user.full_name }}</span>
                             {% endif %}
                         </td>
-                        <td>
+                        <td class="d-none d-sm-table-cell">
                             <span class="badge {% if log.role == 'Admin' %}bg-dark{% else %}bg-secondary{% endif %}">
                                 {{ log.role }}
                             </span>
@@ -78,9 +78,9 @@
                             </span>
                         </td>
                         <td><strong>{{ log.module }}</strong></td>
-                        <td>
+                        <td class="d-none d-sm-table-cell">
                             {% if log.record_id %}
-                            <span class="badge bg-light text-dark border">#{{ log.record_id }}</span>
+                            <span class="text-muted">#{{ log.record_id }}</span>
                             {% else %}
                             -
                             {% endif %}
