@@ -9,9 +9,15 @@
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
         body {
             display: flex;
-            min-height: 100vh;
+            height: 100dvh;
+            overflow: hidden; /* Locks app to screen height */
             background-color: #f8f9fa;
         }
         .sidebar {
@@ -21,17 +27,14 @@
             color: white;
             transition: all 0.3s;
             z-index: 1040;
-            height: 100vh;
-            position: sticky;
-            top: 0;
-            overflow-y: auto;
-            overflow-x: hidden;
+            overflow: hidden;
         }
         @media (max-width: 768px) {
             .sidebar {
                 position: fixed;
                 left: -250px;
-                height: 100vh;
+                top: 0;
+                bottom: 0;
             }
             .sidebar.show {
                 left: 0;
@@ -133,7 +136,8 @@
             flex-grow: 1;
             display: flex;
             flex-direction: column;
-            overflow-x: hidden;
+            height: 100%;
+            overflow: hidden;
         }
         .top-navbar {
             background-color: white;
@@ -143,6 +147,7 @@
         .main-content {
             padding: 20px;
             flex-grow: 1;
+            overflow-y: auto; /* Only dashboard content scrolls */
         }
         @media print {
             @page {
@@ -245,7 +250,7 @@
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
     
     <!-- Sidebar -->
-    <nav class="sidebar d-flex flex-column p-0" id="sidebar">
+    <nav class="sidebar h-100 d-flex flex-column p-0" id="sidebar">
         <div class="sidebar-header p-3 mb-3 border-bottom border-secondary text-center">
             {% if current_user.role == 'Admin' %}
                 <i class="bi bi-shield-lock text-primary mb-2" style="font-size: 2.5rem;"></i>
@@ -255,7 +260,7 @@
                 <h5 class="mb-0 text-white fw-bold">Coordinator Panel</h5>
             {% endif %}
         </div>
-        <ul class="nav nav-pills flex-column mb-auto">
+        <ul class="nav nav-pills flex-column mb-auto overflow-auto flex-nowrap">
             {% if current_user.role == 'Admin' %}
             <li class="nav-item">
                 <a href="{{ url_for('dashboard.index') }}" class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}">
@@ -323,7 +328,7 @@
             </li>
             {% endif %}
         </ul>
-        <div class="mt-auto p-3 border-top border-secondary bg-dark bg-opacity-25">
+        <div class="mt-auto mb-0 p-3 border-top border-secondary bg-dark bg-opacity-25">
             <div class="d-flex align-items-center mb-3 text-white">
                 <i class="bi bi-person-circle fs-3 me-2"></i>
                 <div class="text-start">
