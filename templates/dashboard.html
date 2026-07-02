@@ -84,8 +84,8 @@
                     </button>
                 </h2>
                 <div id="collapseFinancial" class="accordion-collapse collapse" aria-labelledby="headingFinancial" data-bs-parent="#adminChartsAccordion">
-                    <div class="accordion-body">
-                        <canvas id="monthlyFinancialChart" height="280"></canvas>
+                    <div class="accordion-body" style="position: relative; height: 350px; width: 100%;">
+                        <canvas id="monthlyFinancialChart"></canvas>
                     </div>
                 </div>
             </div>
@@ -93,12 +93,12 @@
             <div class="accordion-item shadow-sm border-0 rounded">
                 <h2 class="accordion-header" id="headingAttendance">
                     <button class="accordion-button collapsed bg-white text-secondary fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAttendance" aria-expanded="false" aria-controls="collapseAttendance">
-                        <i class="bi bi-graph-up text-primary me-2"></i> Session-wise Attendance Trend (Last 15 Sessions)
+                        <i class="bi bi-graph-up text-primary me-2"></i> Session-wise Attendance Trend
                     </button>
                 </h2>
                 <div id="collapseAttendance" class="accordion-collapse collapse" aria-labelledby="headingAttendance" data-bs-parent="#adminChartsAccordion">
-                    <div class="accordion-body">
-                        <canvas id="dailyAttendanceChart" height="280"></canvas>
+                    <div class="accordion-body" style="position: relative; height: 350px; width: 100%;">
+                        <canvas id="dailyAttendanceChart"></canvas>
                     </div>
                 </div>
             </div>
@@ -224,16 +224,16 @@
                     <div class="tab-pane fade show active" id="yesterday-absent" role="tabpanel">
                         <div id="yesterday_wrapper">
                             <div>
-                                <table class="table align-middle mb-0 bg-white w-100" id="yesterday_table">
+                                <table class="table align-middle mb-0 bg-white w-100 nowrap" id="yesterday_table">
                                     <caption class="html2pdf-title" style="caption-side: top; color: #212529; text-align: left;">
                                         <h3 class="mb-1 fw-bold">Yesterday's Absentees Report</h3>
                                         <p class="text-muted small mb-3">Generated on: {{ date.today().strftime('%Y-%m-%d') if date else '' }}</p>
                                     </caption>
-                                <thead class="table-light"><tr><th class="d-none d-sm-table-cell">Reg ID</th><th>Name</th><th>Status</th><th>Contact</th></tr></thead>
+                                <thead class="table-light"><tr><th data-priority="4">Reg ID</th><th data-priority="1">Name</th><th data-priority="2">Status</th><th data-priority="1">Contact</th></tr></thead>
                                 <tbody>
                                     {% for rec in yesterdays_absentees %}
                                     <tr>
-                                        <td class="d-none d-sm-table-cell">{{ rec.student.registration_id }}</td>
+                                        <td>{{ rec.student.registration_id }}</td>
                                         <td>{{ rec.student.full_name }}</td>
                                         <td>
                                             <span class="badge {% if rec.absent_type == 'Full' %}bg-danger{% else %}bg-warning text-dark{% endif %}">Absent</span>
@@ -258,16 +258,16 @@
                     <div class="tab-pane fade" id="today-absent" role="tabpanel">
                         <div id="today_wrapper">
                             <div>
-                                <table class="table align-middle mb-0 bg-white w-100" id="today_table">
+                                <table class="table align-middle mb-0 bg-white w-100 nowrap" id="today_table">
                                     <caption class="html2pdf-title" style="caption-side: top; color: #212529; text-align: left;">
                                         <h3 class="mb-1 fw-bold">Today's Absentees Report</h3>
                                         <p class="text-muted small mb-3">Generated on: {{ date.today().strftime('%Y-%m-%d') if date else '' }}</p>
                                     </caption>
-                                <thead class="table-light"><tr><th class="d-none d-sm-table-cell">Reg ID</th><th>Name</th><th>Status</th><th>Contact</th></tr></thead>
+                                <thead class="table-light"><tr><th data-priority="4">Reg ID</th><th data-priority="1">Name</th><th data-priority="2">Status</th><th data-priority="1">Contact</th></tr></thead>
                                 <tbody>
                                     {% for rec in today_absentees %}
                                     <tr>
-                                        <td class="d-none d-sm-table-cell">{{ rec.student.registration_id }}</td>
+                                        <td>{{ rec.student.registration_id }}</td>
                                         <td>{{ rec.student.full_name }}</td>
                                         <td>
                                             <span class="badge {% if rec.absent_type == 'Full' %}bg-danger{% else %}bg-warning text-dark{% endif %}">Absent</span>
@@ -292,18 +292,18 @@
                     <div class="tab-pane fade" id="consec-absent" role="tabpanel">
                         <div id="consecutive_wrapper">
                             <div>
-                                <table class="table align-middle mb-0 bg-white w-100" id="consecutive_table">
+                                <table class="table align-middle mb-0 bg-white w-100 nowrap" id="consecutive_table">
                                     <caption class="html2pdf-title" style="caption-side: top; color: #212529; text-align: left;">
                                         <h3 class="mb-1 fw-bold">Consecutive Absences Report</h3>
                                         <p class="text-muted small mb-3">Generated on: {{ date.today().strftime('%Y-%m-%d') if date else '' }}</p>
                                     </caption>
-                                <thead class="table-light"><tr><th class="d-none d-sm-table-cell">Reg ID</th><th>Name</th><th>Alert</th><th>Contact</th></tr></thead>
+                                <thead class="table-light"><tr><th data-priority="4">Reg ID</th><th data-priority="1">Name</th><th data-priority="2">Alert</th><th data-priority="1">Contact</th></tr></thead>
                                 <tbody>
                                     {% for stu in consecutive_absences %}
                                     <tr>
-                                        <td class="d-none d-sm-table-cell">{{ stu.registration_id }}</td>
+                                        <td>{{ stu.registration_id }}</td>
                                         <td>{{ stu.full_name }}</td>
-                                        <td><span class="badge bg-danger">Consecutive Absences</span></td>
+                                        <td><span class="badge bg-danger"><span class="d-none d-sm-inline">Consecutive Absences</span><span class="d-inline d-sm-none">Consecutive</span></span></td>
                                         <td>
                                             <div class="d-flex align-items-center gap-1">
                                                 <a href="{{ stu | wa_link('consecutive') }}" target="_blank" class="btn btn-sm btn-success rounded-circle"><i class="bi bi-whatsapp"></i></a>
@@ -321,16 +321,16 @@
                     <div class="tab-pane fade" id="risk-absent" role="tabpanel">
                         <div id="risk_wrapper">
                             <div>
-                                <table class="table align-middle mb-0 bg-white w-100" id="risk_table">
+                                <table class="table align-middle mb-0 bg-white w-100 nowrap" id="risk_table">
                                     <caption class="html2pdf-title" style="caption-side: top; color: #212529; text-align: left;">
                                         <h3 class="mb-1 fw-bold">At Risk (< 70%) Students Report</h3>
                                         <p class="text-muted small mb-3">Generated on: {{ date.today().strftime('%Y-%m-%d') if date else '' }}</p>
                                     </caption>
-                                <thead class="table-light"><tr><th class="d-none d-sm-table-cell">Reg ID</th><th>Name</th><th>Attendance</th><th>Contact</th></tr></thead>
+                                <thead class="table-light"><tr><th data-priority="4">Reg ID</th><th data-priority="1">Name</th><th data-priority="2">Attendance</th><th data-priority="1">Contact</th></tr></thead>
                                 <tbody>
                                     {% for item in low_attendance %}
                                     <tr>
-                                        <td class="d-none d-sm-table-cell">{{ item.student.registration_id }}</td>
+                                        <td>{{ item.student.registration_id }}</td>
                                         <td>{{ item.student.full_name }}</td>
                                         <td>
                                             <span class="text-danger fw-bold">
@@ -445,67 +445,122 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-    const ctx = document.getElementById('monthlyFinancialChart');
-    if (ctx) {
-        new Chart(ctx.getContext('2d'), {
-            type: 'bar',
-            data: {
-                labels: {{ months_list|tojson }},
-                datasets: [
-                    {
-                        label: 'Fee Collections (Rs.)',
-                        data: {{ monthly_collections|tojson }},
-                        backgroundColor: 'rgba(40, 167, 69, 0.7)',
-                        borderColor: 'rgba(40, 167, 69, 1)',
-                        borderWidth: 1
-                    },
-                    {
-                        label: 'Expenses (Rs.)',
-                        data: {{ monthly_expenses|tojson }},
-                        backgroundColor: 'rgba(220, 53, 69, 0.7)',
-                        borderColor: 'rgba(220, 53, 69, 1)',
-                        borderWidth: 1
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
+    let financialChartInstance = null;
+    let attendanceChartInstance = null;
+    
+    const fullFinancialLabels = {{ months_list|tojson }};
+    const fullFeeData = {{ monthly_collections|tojson }};
+    const fullExpData = {{ monthly_expenses|tojson }};
+    
+    const fullAttLabels = {{ daily_chart_dates|tojson }};
+    const fullAttData = {{ daily_chart_percentages|tojson }};
+    
+    let currentMonthIdx = new Date().getMonth();
+    
+    function initOrUpdateCharts() {
+        let isMobile = window.innerWidth < 768;
+        
+        let fLabels = fullFinancialLabels;
+        let fFee = fullFeeData;
+        let fExp = fullExpData;
+        
+        if (isMobile) {
+            let startIdx = Math.max(0, currentMonthIdx - 4);
+            if (fLabels.length > 5) {
+                fLabels = fLabels.slice(startIdx, currentMonthIdx + 1);
+                fFee = fFee.slice(startIdx, currentMonthIdx + 1);
+                fExp = fExp.slice(startIdx, currentMonthIdx + 1);
             }
-        });
-    }
+        }
+        
+        let aLabels = fullAttLabels;
+        let aData = fullAttData;
+        
+        if (isMobile && aLabels.length > 5) {
+            aLabels = aLabels.slice(-5);
+            aData = aData.slice(-5);
+        }
 
-    const attCtx = document.getElementById('dailyAttendanceChart');
-    if (attCtx) {
-        new Chart(attCtx.getContext('2d'), {
-            type: 'bar',
-            data: {
-                labels: {{ daily_chart_dates|tojson }},
-                datasets: [{
-                    label: 'Attendance %',
-                    data: {{ daily_chart_percentages|tojson }},
-                    backgroundColor: 'rgba(13, 110, 253, 0.7)',
-                    borderColor: 'rgba(13, 110, 253, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        max: 100
+        const ctx = document.getElementById('monthlyFinancialChart');
+        if (ctx) {
+            if (financialChartInstance) {
+                financialChartInstance.data.labels = fLabels;
+                financialChartInstance.data.datasets[0].data = fFee;
+                financialChartInstance.data.datasets[1].data = fExp;
+                financialChartInstance.update();
+            } else {
+                financialChartInstance = new Chart(ctx.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: fLabels,
+                        datasets: [
+                            {
+                                label: 'Fee Collections (Rs.)',
+                                data: fFee,
+                                backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                                borderColor: 'rgba(40, 167, 69, 1)',
+                                borderWidth: 1
+                            },
+                            {
+                                label: 'Expenses (Rs.)',
+                                data: fExp,
+                                backgroundColor: 'rgba(220, 53, 69, 0.7)',
+                                borderColor: 'rgba(220, 53, 69, 1)',
+                                borderWidth: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 45 } },
+                            y: { beginAtZero: true }
+                        }
                     }
-                }
+                });
             }
-        });
+        }
+
+        const attCtx = document.getElementById('dailyAttendanceChart');
+        if (attCtx) {
+            if (attendanceChartInstance) {
+                attendanceChartInstance.data.labels = aLabels;
+                attendanceChartInstance.data.datasets[0].data = aData;
+                attendanceChartInstance.update();
+            } else {
+                attendanceChartInstance = new Chart(attCtx.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: aLabels,
+                        datasets: [{
+                            label: 'Attendance %',
+                            data: aData,
+                            backgroundColor: 'rgba(13, 110, 253, 0.7)',
+                            borderColor: 'rgba(13, 110, 253, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 45 } },
+                            y: { beginAtZero: true, max: 100 }
+                        }
+                    }
+                });
+            }
+        }
     }
+    
+    initOrUpdateCharts();
+    
+    let resizeTimer;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(initOrUpdateCharts, 250);
+    });
 });
 
     const adminAccordion = document.getElementById('adminChartsAccordion');
@@ -717,6 +772,7 @@ $(document).ready(function() {
     const tableOptions = {
         "pageLength": 10,
         "lengthChange": false,
+        "responsive": true,
         "dom": 'lrtip', // Hides the default search box
         "language": {
             "info": "Showing _START_ to _END_ of _TOTAL_ students",
@@ -741,6 +797,10 @@ $(document).ready(function() {
         if (dt_today) dt_today.search(this.value).draw();
         if (dt_consec) dt_consec.search(this.value).draw();
         if (dt_risk) dt_risk.search(this.value).draw();
+    });
+
+    $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+        $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust().responsive.recalc();
     });
 });
 

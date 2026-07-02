@@ -99,14 +99,14 @@
     <!-- Student Tab -->
     <div class="tab-pane fade show active" id="students" role="tabpanel" aria-labelledby="students-tab">
         <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+            <div class="card-header bg-white d-flex flex-column flex-md-row justify-content-between align-items-md-center py-3 gap-2">
                 <h5 class="mb-0">Student Roster (Total: {{ students|length }})</h5>
-                <div>
-                    <button type="button" class="btn btn-sm btn-outline-danger me-2" onclick="exportToPDF('students_wrapper', 'Student_Registry_Report')">
-                        <i class="bi bi-file-pdf"></i> Save as PDF
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-danger" style="width: 80px;" onclick="exportToPDF('students_wrapper', 'Student_Registry_Report')">
+                        <i class="bi bi-file-pdf"></i> PDF
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-success" onclick="exportToExcel('studentsTable', 'Student_Registry_Report')">
-                        <i class="bi bi-file-excel"></i> Export Excel
+                    <button type="button" class="btn btn-sm btn-outline-success" style="width: 80px;" onclick="exportToExcel('studentsTable', 'Student_Registry_Report')">
+                        <i class="bi bi-file-excel"></i> Excel
                     </button>
                 </div>
             </div>
@@ -162,14 +162,14 @@
     <!-- Fee Collection Tab -->
     <div class="tab-pane fade" id="fees" role="tabpanel" aria-labelledby="fees-tab">
         <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+            <div class="card-header bg-white d-flex flex-column flex-md-row justify-content-between align-items-md-center py-3 gap-2">
                 <h5 class="mb-0">Fee Logs ({{ start_date }} to {{ end_date }})</h5>
-                <div>
-                    <button type="button" class="btn btn-sm btn-outline-danger me-2" onclick="exportToPDF('fees_wrapper', 'Fee_Collection_Report')">
-                        <i class="bi bi-file-pdf"></i> Save as PDF
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-danger" style="width: 80px;" onclick="exportToPDF('fees_wrapper', 'Fee_Collection_Report')">
+                        <i class="bi bi-file-pdf"></i> PDF
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-success" onclick="exportToExcel('feesTable', 'Fee_Collection_Report')">
-                        <i class="bi bi-file-excel"></i> Export Excel
+                    <button type="button" class="btn btn-sm btn-outline-success" style="width: 80px;" onclick="exportToExcel('feesTable', 'Fee_Collection_Report')">
+                        <i class="bi bi-file-excel"></i> Excel
                     </button>
                 </div>
             </div>
@@ -221,14 +221,14 @@
     <!-- Expenses Tab -->
     <div class="tab-pane fade" id="expenses" role="tabpanel" aria-labelledby="expenses-tab">
         <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+            <div class="card-header bg-white d-flex flex-column flex-md-row justify-content-between align-items-md-center py-3 gap-2">
                 <h5 class="mb-0">Expense Ledger ({{ start_date }} to {{ end_date }})</h5>
-                <div>
-                    <button type="button" class="btn btn-sm btn-outline-danger me-2" onclick="exportToPDF('expenses_wrapper', 'Expenses_Report')">
-                        <i class="bi bi-file-pdf"></i> Save as PDF
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-danger" style="width: 80px;" onclick="exportToPDF('expenses_wrapper', 'Expenses_Report')">
+                        <i class="bi bi-file-pdf"></i> PDF
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-success" onclick="exportToExcel('expensesTable', 'Expenses_Report')">
-                        <i class="bi bi-file-excel"></i> Export Excel
+                    <button type="button" class="btn btn-sm btn-outline-success" style="width: 80px;" onclick="exportToExcel('expensesTable', 'Expenses_Report')">
+                        <i class="bi bi-file-excel"></i> Excel
                     </button>
                 </div>
             </div>
@@ -270,18 +270,18 @@
     <!-- Attendance Summary Tab -->
     <div class="tab-pane fade" id="attendance" role="tabpanel" aria-labelledby="attendance-tab">
         <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+            <div class="card-header bg-white d-flex flex-column flex-md-row justify-content-between align-items-md-center py-3 gap-2">
                 <h5 class="mb-0">
                     Academic Attendance Summaries 
                     {% if selected_subject %}<span class="badge bg-info text-dark">{{ selected_subject }}</span>{% endif %}
                     <span class="fs-6 text-muted">({{ start_date }} to {{ end_date }})</span>
                 </h5>
-                <div>
-                    <button type="button" class="btn btn-sm btn-outline-danger me-2" onclick="exportToPDF('attendance_wrapper', 'Attendance_Summary_Report')">
-                        <i class="bi bi-file-pdf"></i> Save as PDF
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-danger" style="width: 80px;" onclick="exportToPDF('attendance_wrapper', 'Attendance_Summary_Report')">
+                        <i class="bi bi-file-pdf"></i> PDF
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-success" onclick="exportToExcel('attendanceTable', 'Attendance_Summary_Report')">
-                        <i class="bi bi-file-excel"></i> Export Excel
+                    <button type="button" class="btn btn-sm btn-outline-success" style="width: 80px;" onclick="exportToExcel('attendanceTable', 'Attendance_Summary_Report')">
+                        <i class="bi bi-file-excel"></i> Excel
                     </button>
                 </div>
             </div>
