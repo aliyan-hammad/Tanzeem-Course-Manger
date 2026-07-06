@@ -90,14 +90,53 @@ def create_app():
         # Apply runtime migrations for Vercel PostgreSQL environments
         from sqlalchemy import text
         try:
-            # Need to double quote "user" for Postgres, SQLite handles it gracefully or tolerates it
-            db.session.execute(text('ALTER TABLE "user" ADD COLUMN salary_type VARCHAR(20)'))
-            db.session.execute(text('ALTER TABLE "user" ADD COLUMN salary_amount FLOAT DEFAULT 0.0'))
-            db.session.execute(text('ALTER TABLE "user" ADD COLUMN bank_details VARCHAR(255)'))
+            # User table migrations
+            db.session.execute(text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS salary_type VARCHAR(20)'))
+            db.session.execute(text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS salary_amount FLOAT DEFAULT 0.0'))
+            db.session.execute(text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS bank_details VARCHAR(255)'))
+            db.session.execute(text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS linked_student_id INTEGER REFERENCES student(id)'))
+            
+            # Class Session table migrations
+            db.session.execute(text('ALTER TABLE class_session ADD COLUMN IF NOT EXISTS created_by_id INTEGER REFERENCES "user"(id)'))
+            db.session.execute(text('ALTER TABLE class_session ADD COLUMN IF NOT EXISTS marked_by_id INTEGER REFERENCES "user"(id)'))
+            
+            # Fee Collection table migrations
+            db.session.execute(text('ALTER TABLE fee_collection ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE NOT NULL'))
+            db.session.execute(text('ALTER TABLE fee_collection ADD COLUMN IF NOT EXISTS deleted_by_id INTEGER REFERENCES "user"(id)'))
+            db.session.execute(text('ALTER TABLE fee_collection ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP'))
+            db.session.execute(text('ALTER TABLE fee_collection ADD COLUMN IF NOT EXISTS delete_reason VARCHAR(255)'))
+            
+            # Expense table migrations
+            db.session.execute(text('ALTER TABLE expense ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE NOT NULL'))
+            db.session.execute(text('ALTER TABLE expense ADD COLUMN IF NOT EXISTS deleted_by_id INTEGER REFERENCES "user"(id)'))
+            db.session.execute(text('ALTER TABLE expense ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP'))
+            db.session.execute(text('ALTER TABLE expense ADD COLUMN IF NOT EXISTS delete_reason VARCHAR(255)'))
+            
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            # If PostgreSQL < 11 or SQLite doesn't support IF NOT EXISTS, fallback to individual try-except blocks
+            pass
+            
+        # SQLite fallback for runtime migrations
+        try:
+            db.session.execute(text('ALTER TABLE "user" ADD COLUMN linked_student_id INTEGER'))
             db.session.commit()
         except Exception:
             db.session.rollback()
-            pass # Columns already exist
+            pass
+        try:
+            db.session.execute(text('ALTER TABLE class_session ADD COLUMN created_by_id INTEGER'))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            pass
+        try:
+            db.session.execute(text('ALTER TABLE class_session ADD COLUMN marked_by_id INTEGER'))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            pass
             
         # Seed default Admin User
         if not models.User.query.filter_by(username='admin').first():
