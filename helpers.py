@@ -2,6 +2,10 @@ import json
 from flask_login import current_user
 from extensions import db
 from models import AuditLog, ClassSession, Attendance
+import string
+import secrets
+import urllib.parse
+from werkzeug.security import generate_password_hash
 
 def log_audit(action_type, module, record_id=None, old_values=None, new_values=None, remarks=None):
     try:
@@ -72,3 +76,31 @@ def calculate_attendance(student_id, course_id, subject_name=None, start_date=No
         'total': total_sessions,
         'formatted': f"{round(percentage)}% ({attended_count}/{total_sessions} Attended)"
     }
+
+def generate_secure_password(length=8):
+    alphabet = string.ascii_letters + string.digits
+    return ''.join(secrets.choice(alphabet) for i in range(length))
+
+def provision_staff_account(username, raw_password, role, full_name=None, contact=None, linked_student_id=None):
+    from models import User
+    from extensions import db
+    
+    hashed = generate_password_hash(raw_password)
+    user = User(
+        username=username,
+        password_hash=hashed,
+        role=role,
+        full_name=full_name,
+        contact=contact,
+        linked_student_id=linked_student_id
+    )
+    db.session.add(user)
+    db.session.commit()
+    return user
+
+def generate_whatsapp_link(phone_number, name, username, password, role):
+    # Strip any non-numeric from phone
+    phone = ''.join(filter(str.isdigit, str(phone_number)))
+    message = f"Assalam o Alaikum {name},\n\nYour {role} account has been created.\n*Username:* {username}\n*Password:* {password}\n\nPlease log in and do not share these credentials."
+    encoded_message = urllib.parse.quote(message)
+    return f"https://api.whatsapp.com/send?phone={phone}&text={encoded_message}"

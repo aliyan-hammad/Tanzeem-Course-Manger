@@ -1,8 +1,8 @@
 from datetime import datetime, date, timedelta
-from flask import Blueprint, render_template, request, session
+from flask import Blueprint, render_template, request, session, redirect, url_for
 from flask_login import login_required, current_user
 from extensions import db
-from models import User, Course, Student, FeeCollection, Expense, AuditLog, ApprovalRequest, ClassSession, Attendance
+from models import CourseStaff, User, Course, Student, FeeCollection, Expense, AuditLog, ApprovalRequest, ClassSession, Attendance
 from helpers import calculate_attendance
 
 dashboard_bp = Blueprint('dashboard', __name__)
@@ -10,6 +10,9 @@ dashboard_bp = Blueprint('dashboard', __name__)
 @dashboard_bp.route('/')
 @login_required
 def index():
+    if current_user.role in ['Teacher', 'CR', 'TA']:
+        return redirect(url_for('staff.portal'))
+    
     # Session Persistence
     if 'filter_applied' in request.args:
         selected_course_id = request.args.get('course_id', '')
@@ -66,8 +69,9 @@ def index():
                                    latest_fees=[], latest_expenses=[], courses=[],
                                    today_collections=0.0, monthly_collections=0.0,
                                    expenses_added=0.0, pending_requests_count=0,
-                                   start_date_str=start_date_str, end_date_str=end_date_str)
-                                   
+                                   selected_course_id='', start_date_str='', end_date_str='',
+                                   active_course_staff=[], active_course_students=[])
+            
         base_fee_q = FeeCollection.query.join(Student).filter(Student.course_id.in_(assigned_course_ids), FeeCollection.is_deleted==False)
         base_exp_q = Expense.query.filter(Expense.course_id.in_(assigned_course_ids), Expense.is_deleted==False)
         base_stu_q = Student.query.filter(Student.course_id.in_(assigned_course_ids), Student.status=='Active')
@@ -134,7 +138,8 @@ def index():
             absentees = []
             sessions = ClassSession.query.filter(
                 ClassSession.course_id.in_(assigned_course_ids), 
-                ClassSession.date == target_date
+                ClassSession.date == target_date,
+                ClassSession.status == 'Submitted'
             ).all()
             if not sessions:
                 return []
@@ -224,28 +229,36 @@ def index():
                     if 'Present' not in d1_statuses and 'Present' not in d2_statuses:
                         consecutive_absences.append(student)
                 
+        
+        active_course_staff = []
+        active_course_students = []
+        if selected_course_id:
+            active_course_staff = CourseStaff.query.filter_by(course_id=selected_course_id).all()
+            active_course_students = Student.query.filter_by(course_id=selected_course_id, status='Active').all()
+            
         return render_template('dashboard.html', 
-                               total_active_students=total_active_students,
-                               hand_cash=hand_cash,
-                               in_account=in_account,
-                               total_fees=total_fees,
-                               total_expenses=total_expenses,
-                               net_balance=net_balance,
-                               students_paid_count=students_paid_count,
-                               latest_fees=latest_fees,
-                               latest_expenses=latest_expenses,
-                               courses=courses_list,
-                               selected_course_id=selected_course_id,
-                               today_collections=today_collections,
-                               monthly_collections=monthly_collections,
-                               expenses_added=total_expenses,
-                               pending_requests_count=pending_requests_count,
-                               start_date_str=start_date_str, end_date_str=end_date_str,
-                               yesterdays_absentees=yesterdays_absentees,
-                               today_absentees=today_absentees,
-                               consecutive_absences=consecutive_absences,
-                               low_attendance=low_attendance)
-                               
+                                   total_active_students=total_active_students,
+                                   hand_cash=hand_cash,
+                                   in_account=in_account,
+                                   total_fees=total_fees,
+                                   total_expenses=total_expenses,
+                                   net_balance=net_balance,
+                                   students_paid_count=students_paid_count,
+                                   latest_fees=latest_fees,
+                                   latest_expenses=latest_expenses,
+                                   courses=courses_list,
+                                   selected_course_id=selected_course_id,
+                                   today_collections=today_collections,
+                                   monthly_collections=monthly_collections,
+                                   expenses_added=total_expenses,
+                                   pending_requests_count=pending_requests_count,
+                                   start_date_str=start_date_str, end_date_str=end_date_str,
+                                   yesterdays_absentees=yesterdays_absentees,
+                                   today_absentees=today_absentees,
+                                   consecutive_absences=consecutive_absences,
+                                   low_attendance=low_attendance,
+                                   active_course_staff=active_course_staff, active_course_students=active_course_students)
+                                   
     else: # Admin
         pending_edit_requests = ApprovalRequest.query.filter_by(request_type='Edit', status='Pending').count()
         pending_delete_requests = ApprovalRequest.query.filter_by(request_type='Delete', status='Pending').count()
@@ -305,7 +318,19 @@ def index():
             perc = (present_records / total_records * 100) if total_records > 0 else 0
             daily_chart_percentages.append(round(perc, 1))
                 
-        return render_template('dashboard.html', 
+        
+    active_course_staff = []
+    active_course_students = []
+    if selected_course_id:
+        active_course_staff = CourseStaff.query.filter_by(course_id=selected_course_id).all()
+        active_course_students = Student.query.filter_by(course_id=selected_course_id, status='Active').all()
+        
+    active_course_staff = []
+    active_course_students = []
+    if selected_course_id:
+        active_course_staff = CourseStaff.query.filter_by(course_id=selected_course_id).all()
+        active_course_students = Student.query.filter_by(course_id=selected_course_id, status='Active').all()
+    return render_template('dashboard.html', 
                                total_active_students=total_active_students,
                                hand_cash=hand_cash,
                                in_account=in_account,

@@ -25,6 +25,8 @@ def login():
             login_user(user)
             log_audit('Login', 'Auth', remarks=f'User logged in: {user.username}')
             flash(f'Welcome, logged in successfully as {user.role}!', 'success')
+            if user.role in ['Teacher', 'CR', 'TA']:
+                return redirect(url_for('staff.portal'))
             return redirect(url_for('dashboard.index'))
         else:
             flash('Invalid username or password.', 'danger')

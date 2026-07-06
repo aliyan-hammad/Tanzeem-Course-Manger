@@ -27,6 +27,7 @@ def create_app():
     # Register Blueprints
     from routes.auth import auth_bp
     from routes.dashboard import dashboard_bp
+    from routes.staff import staff_bp
     from routes.admin import admin_bp
     from routes.coordinator import coordinator_bp
     from routes.sync import sync_bp
@@ -35,6 +36,7 @@ def create_app():
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(coordinator_bp)
+    app.register_blueprint(staff_bp)
     app.register_blueprint(sync_bp)
 
     @app.context_processor

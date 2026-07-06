@@ -10,10 +10,10 @@ from sync_listeners import trigger_sync_fee_month, trigger_sync_expense_month
 
 admin_bp = Blueprint('admin', __name__)
 
-# --- Coordinators Admin Actions ---
-@admin_bp.route('/coordinators', methods=['GET', 'POST'])
+# --- Staff Admin Actions ---
+@admin_bp.route('/staff', methods=['GET', 'POST'])
 @login_required
-def coordinators():
+def staff():
     if current_user.role != 'Admin':
         flash('Access denied! Admin permissions required.', 'danger')
         return redirect(url_for('dashboard.index'))
@@ -23,70 +23,83 @@ def coordinators():
         password = request.form.get('password')
         full_name = request.form.get('full_name')
         contact = request.form.get('contact')
+        role = request.form.get('role', 'General Staff')
         
-        existing = User.query.filter_by(username=username).first()
+        existing = None
+        if role != 'General Staff':
+            existing = User.query.filter_by(username=username).first()
+            
         if existing:
             flash('Username already exists!', 'danger')
         else:
+            if role == 'General Staff':
+                import uuid
+                username = f"gs_{uuid.uuid4().hex[:8]}"
+                password = uuid.uuid4().hex
+                
             hashed_pw = generate_password_hash(password)
-            new_coord = User(
+            new_staff = User(
                 username=username, 
                 password_hash=hashed_pw, 
-                role='Coordinator',
+                role=role,
                 full_name=full_name,
                 contact=contact,
                 status='Active'
             )
-            db.session.add(new_coord)
+            db.session.add(new_staff)
             db.session.commit()
-            log_audit('Create', 'User', record_id=new_coord.id, remarks=f'Admin registered coordinator: {full_name} ({username})')
-            flash(f'Coordinator "{full_name}" registered successfully!', 'success')
-        return redirect(url_for('admin.coordinators'))
+            log_audit('Create', 'User', record_id=new_staff.id, remarks=f'Admin registered {role}: {full_name} ({username})')
+            flash(f'{role} "{full_name}" registered successfully!', 'success')
+        return redirect(url_for('admin.staff'))
         
-    all_coords = User.query.filter_by(role='Coordinator').all()
-    return render_template('coordinators.html', coordinators=all_coords)
+    all_staff = User.query.filter(User.role != 'Admin', User.role != 'Student', User.role != 'CR').all()
+    return render_template('staff.html', staff=all_staff)
 
-@admin_bp.route('/coordinators/edit/<int:id>', methods=['POST'])
+@admin_bp.route('/staff/edit/<int:id>', methods=['POST'])
 @login_required
-def edit_coordinator(id):
+def edit_staff(id):
     if current_user.role != 'Admin':
         flash('Access denied!', 'danger')
         return redirect(url_for('dashboard.index'))
         
-    coord = User.query.filter_by(id=id, role='Coordinator').first_or_404()
-    old_status = coord.status
-    coord.full_name = request.form.get('full_name')
-    coord.contact = request.form.get('contact')
-    coord.status = request.form.get('status')
-    
-    password = request.form.get('password')
-    if password:
-        coord.password_hash = generate_password_hash(password)
+    staff_member = User.query.filter_by(id=id).first_or_404()
+    old_status = staff_member.status
+    staff_member.full_name = request.form.get('full_name')
+    staff_member.contact = request.form.get('contact')
+    staff_member.status = request.form.get('status')
+    if request.form.get('role'):
+        staff_member.role = request.form.get('role')
+        
+    # Only process username/password if not General Staff
+    if staff_member.role != 'General Staff':
+        password = request.form.get('password')
+        if password:
+            staff_member.password_hash = generate_password_hash(password)
         
     db.session.commit()
-    log_audit('Update', 'User', record_id=coord.id, remarks=f'Admin modified coordinator: {coord.username}. Status: {old_status} -> {coord.status}')
-    flash(f'Coordinator "{coord.full_name}" credentials updated successfully!', 'success')
-    return redirect(url_for('admin.coordinators'))
+    log_audit('Update', 'User', record_id=staff_member.id, remarks=f'Admin modified staff: {staff_member.username}. Status: {old_status} -> {staff_member.status}')
+    flash(f'Staff "{staff_member.full_name}" credentials updated successfully!', 'success')
+    return redirect(url_for('admin.staff'))
 
-@admin_bp.route('/coordinators/delete/<int:id>', methods=['POST'])
+@admin_bp.route('/staff/delete/<int:id>', methods=['POST'])
 @login_required
-def delete_coordinator(id):
+def delete_staff(id):
     if current_user.role != 'Admin':
         flash('Access denied!', 'danger')
         return redirect(url_for('dashboard.index'))
         
-    coord = User.query.filter_by(id=id, role='Coordinator').first_or_404()
+    staff_member = User.query.filter_by(id=id).first_or_404()
     
-    if len(coord.managed_courses) > 0:
-        course_names = ", ".join([c.name for c in coord.managed_courses])
-        flash(f'Cannot delete coordinator because they are currently managing courses: {course_names}. Please assign a different coordinator to these courses first.', 'danger')
+    if len(staff_member.managed_courses) > 0:
+        course_names = ", ".join([c.name for c in staff_member.managed_courses])
+        flash(f'Cannot delete staff because they are currently managing courses: {course_names}. Please assign a different coordinator to these courses first.', 'danger')
     else:
-        username = coord.username
-        db.session.delete(coord)
+        username = staff_member.username
+        db.session.delete(staff_member)
         db.session.commit()
-        log_audit('Delete', 'User', record_id=id, remarks=f'Admin permanently deleted coordinator: {username}')
-        flash('Coordinator deleted successfully!', 'success')
-    return redirect(url_for('admin.coordinators'))
+        log_audit('Delete', 'User', record_id=id, remarks=f'Admin permanently deleted staff: {username}')
+        flash('Staff member deleted successfully!', 'success')
+    return redirect(url_for('admin.staff'))
 
 # --- Courses Admin Actions ---
 @admin_bp.route('/courses', methods=['GET', 'POST'])

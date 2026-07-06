@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <h2 class="mb-0">Staff Management</h2>
+    <button class="btn btn-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#addStaffModal">
+        <i class="bi bi-person-plus"></i> Add Staff
+    </button>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div>
+            <table class="table table-hover align-middle mb-0 w-100 nowrap" id="staffTable">
+                <thead class="table-light">
+                    <tr>
+                        <th data-priority="4">ID</th>
+                        <th data-priority="1">Staff Name</th>
+                        <th data-priority="2">Role</th>
+                        <th data-priority="2">Contact</th>
+                        <th data-priority="3">Username (Login)</th>
+                        <th data-priority="3">Managed Courses</th>
+                        <th data-priority="2">Status</th>
+                        <th data-priority="1">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for staff_member in staff %}
+                    <tr>
+                        <td>#{{ staff_member.id }}</td>
+                        <td><strong>{{ staff_member.full_name if staff_member.full_name else '-' }}</strong></td>
+                        <td><span class="badge bg-primary">{{ staff_member.role }}</span></td>
+                        <td>{{ staff_member.contact if staff_member.contact else '-' }}</td>
+                        <td>
+                            {% if staff_member.role == 'General Staff' %}
+                                <span class="text-muted small">N/A (No Login Required)</span>
+                            {% else %}
+                                {{ staff_member.username }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if staff_member.managed_courses %}
+                                {% for course in staff_member.managed_courses %}
+                                <span class="badge bg-light text-dark border me-1">{{ course.name }}</span>
+                                {% endfor %}
+                            {% else %}
+                                <span class="text-muted small">None</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge {% if staff_member.status == 'Active' %}bg-success{% else %}bg-danger{% endif %}">
+                                {{ staff_member.status }}
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editStaffModal{{ staff_member.id }}">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <form action="{{ url_for('admin.delete_staff', id=staff_member.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to remove this staff_member? This will dissociate them from their courses.');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                            </form>
+                        </td>
+                    </tr>
+
+                    <!-- Edit Staff Modal -->
+                    <div class="modal fade" id="editStaffModal{{ staff_member.id }}" tabindex="-1" aria-labelledby="editStaffModalLabel{{ staff_member.id }}" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="editStaffModalLabel{{ staff_member.id }}">Edit Staff Details</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <form action="{{ url_for('admin.edit_staff', id=staff_member.id) }}" method="POST">
+                                    <div class="modal-body">
+                                        <div class="mb-3">
+                                            <label for="full_name{{ staff_member.id }}" class="form-label">Staff Name</label>
+                                            <input type="text" class="form-control" id="full_name{{ staff_member.id }}" name="full_name" value="{{ staff_member.full_name if staff_member.full_name else '' }}" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="contact{{ staff_member.id }}" class="form-label">Contact Number</label>
+                                            <input type="text" class="form-control" id="contact{{ staff_member.id }}" name="contact" value="{{ staff_member.contact if staff_member.contact else '' }}" required pattern="[0-9]{11}" maxlength="11" minlength="11" title="Contact number must be exactly 11 digits (numbers only)">
+                                        </div>
+                                        <div class="mb-3 auth-fields{{ staff_member.id }}" {% if staff_member.role == 'General Staff' %}style="display: none;"{% endif %}>
+                                            <label for="password{{ staff_member.id }}" class="form-label">Update Password (Leave blank to keep current)</label>
+                                            <input type="password" class="form-control" id="password{{ staff_member.id }}" name="password" placeholder="New password">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="role{{ staff_member.id }}" class="form-label">System Role</label>
+                                            <select class="form-select role-select" data-target=".auth-fields{{ staff_member.id }}" id="role{{ staff_member.id }}" name="role" required>
+                                                <option value="Coordinator" {% if staff_member.role == 'Coordinator' %}selected{% endif %}>Coordinator</option>
+                                                <option value="Teacher" {% if staff_member.role == 'Teacher' %}selected{% endif %}>Teacher</option>
+                                                <option value="TA" {% if staff_member.role == 'TA' %}selected{% endif %}>TA</option>
+                                                <option value="General Staff" {% if staff_member.role == 'General Staff' %}selected{% endif %}>General Staff</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="status{{ staff_member.id }}" class="form-label">Authorization Status</label>
+                                            <select class="form-select" id="status{{ staff_member.id }}" name="status" required>
+                                                <option value="Active" {% if staff_member.status == 'Active' %}selected{% endif %}>Active (Authorized)</option>
+                                                <option value="Inactive" {% if staff_member.status == 'Inactive' %}selected{% endif %}>Inactive (De-authorized)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-primary">Update Details</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add Staff Modal -->
+<div class="modal fade" id="addStaffModal" tabindex="-1" aria-labelledby="addStaffModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addStaffModalLabel">Add New Staff</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('admin.staff') }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="full_name" class="form-label">Staff Name</label>
+                        <input type="text" class="form-control" id="full_name" name="full_name" placeholder="Enter Full Name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="contact" class="form-label">Contact Number (11 digits)</label>
+                        <input type="text" class="form-control" id="contact" name="contact" placeholder="e.g. 03001234567" required pattern="[0-9]{11}" maxlength="11" minlength="11" title="Contact number must be exactly 11 digits (numbers only)">
+                    </div>
+                    <div class="mb-3">
+                        <label for="role" class="form-label">System Role</label>
+                        <select class="form-select role-select" data-target=".add-auth-fields" id="role" name="role" required>
+                            <option value="Coordinator">Coordinator</option>
+                            <option value="Teacher">Teacher</option>
+                            <option value="TA">TA</option>
+                            <option value="General Staff" selected>General Staff</option>
+                        </select>
+                    </div>
+                    <div class="add-auth-fields" style="display: none;">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Login Username</label>
+                            <input type="text" class="form-control auth-input" id="username" name="username" placeholder="Enter login username">
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" class="form-control auth-input" id="password" name="password" placeholder="Enter temporary password">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Account</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css"/>
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css"/>
+<script type="text/javascript" src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
+<script>
+$(document).ready(function() {
+    $('#staffTable').DataTable({
+        responsive: true,
+        pageLength: 10,
+        lengthChange: false,
+        order: [[0, 'desc']],
+        language: {
+            search: "Search Staff:"
+        },
+        dom: "<'row px-3 pt-3'<'col-sm-12 col-md-6'><'col-sm-12 col-md-6'f>>" +
+             "<'row'<'col-sm-12'tr>>" +
+             "<'row px-3 pb-3 pt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
+    });
+
+    // Handle Role Select to toggle Auth Fields
+    $('.role-select').on('change', function() {
+        const targetClass = $(this).data('target');
+        const authFields = $(targetClass);
+        const authInputs = authFields.find('.auth-input');
+        
+        if ($(this).val() === 'General Staff') {
+            authFields.slideUp();
+            authInputs.prop('required', false);
+        } else {
+            authFields.slideDown();
+            authInputs.prop('required', true);
+        }
+    });
+    
+    // Trigger change on load for default state
+    $('#role').trigger('change');
+});
+</script>
+{% endblock %}

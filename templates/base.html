@@ -255,9 +255,12 @@
             {% if current_user.role == 'Admin' %}
                 <i class="bi bi-shield-lock text-primary mb-2" style="font-size: 2.5rem;"></i>
                 <h5 class="mb-0 text-white fw-bold">Admin Panel</h5>
-            {% else %}
+            {% elif current_user.role == 'Coordinator' %}
                 <i class="bi bi-briefcase text-info mb-2" style="font-size: 2.5rem;"></i>
                 <h5 class="mb-0 text-white fw-bold">Coordinator Panel</h5>
+            {% else %}
+                <i class="bi bi-person-workspace text-success mb-2" style="font-size: 2.5rem;"></i>
+                <h5 class="mb-0 text-white fw-bold">Staff Portal</h5>
             {% endif %}
         </div>
         <ul class="nav nav-pills flex-column mb-auto overflow-auto flex-nowrap">
@@ -273,8 +276,8 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a href="{{ url_for('admin.coordinators') }}" class="nav-link {% if request.endpoint == 'admin.coordinators' %}active{% endif %}">
-                    <i class="bi bi-person-gear"></i> Coordinators
+                <a href="{{ url_for('admin.staff') }}" class="nav-link {% if request.endpoint == 'admin.staff' %}active{% endif %}">
+                    <i class="bi bi-people-fill"></i> Staff Management
                 </a>
             </li>
             <li class="nav-item">
@@ -366,7 +369,7 @@
                     {% if messages %}
                         {% for category, message in messages %}
                             <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                                {{ message }}
+                                {{ message|safe }}
                                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                             </div>
                         {% endfor %}

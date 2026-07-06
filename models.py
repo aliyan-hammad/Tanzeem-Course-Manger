@@ -10,12 +10,28 @@ class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
-    role = db.Column(db.String(20), nullable=False, default='Coordinator')  # Admin or Coordinator
-    full_name = db.Column(db.String(100), nullable=True)  # Coordinator Name
-    contact = db.Column(db.String(20), nullable=True)  # Coordinator Contact
-    status = db.Column(db.String(20), nullable=False, default='Active')  # Active or Inactive
+    role = db.Column(db.String(50), nullable=False, default='General Staff')  # Admin, Coordinator, Teacher, TA, CR, General Staff
+    full_name = db.Column(db.String(100), nullable=True)
+    contact = db.Column(db.String(20), nullable=True)
+    status = db.Column(db.String(20), nullable=False, default='Active')
+    
+    # Payroll fields
+    salary_type = db.Column(db.String(20), nullable=True)  # 'Fixed Monthly' or 'Per Session'
+    salary_amount = db.Column(db.Float, nullable=True, default=0.0)
+    bank_details = db.Column(db.String(255), nullable=True)
+    linked_student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=True)  # Links CR role to actual Student
     managed_courses = db.relationship('Course', backref='coordinator', lazy=True)
     fees_collected = db.relationship('FeeCollection', backref='collected_by', lazy=True, foreign_keys="[FeeCollection.collected_by_id]")
+    linked_student = db.relationship('Student', foreign_keys=[linked_student_id], backref='user_account', lazy=True)
+
+class CourseStaff(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('course.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    role_in_course = db.Column(db.String(50), nullable=False)  # Primary Teacher, TA, CR
+    assigned_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    user = db.relationship('User', backref='course_assignments', lazy=True)
 
 class Course(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -28,8 +44,9 @@ class Course(db.Model):
     start_date = db.Column(db.Date, nullable=True)
     end_date = db.Column(db.Date, nullable=True)
     subjects = db.Column(db.Text, nullable=True)  # Store as JSON string or comma-separated
-    students = db.relationship('Student', backref='course', lazy=True)
+    students = db.relationship('Student', backref='course', lazy=True, foreign_keys="[Student.course_id]")
     expenses = db.relationship('Expense', backref='course', lazy=True)
+    staff = db.relationship('CourseStaff', backref='course', lazy=True, cascade="all, delete-orphan")
 
 class Student(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -84,8 +101,13 @@ class ClassSession(db.Model):
     course_id = db.Column(db.Integer, db.ForeignKey('course.id'), nullable=False)
     date = db.Column(db.Date, nullable=False)
     subject_name = db.Column(db.String(50), nullable=False)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Teacher or CR who created it
+    marked_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)   # User who marked the attendance
+    status = db.Column(db.String(20), default='Submitted') # Pending, Submitted
     attendances = db.relationship('Attendance', backref='session', lazy=True, cascade="all, delete-orphan")
     course = db.relationship('Course', backref='sessions', lazy=True)
+    created_by = db.relationship('User', foreign_keys=[created_by_id], backref='sessions_created', lazy=True)
+    marked_by = db.relationship('User', foreign_keys=[marked_by_id], backref='sessions_marked', lazy=True)
 
 class Attendance(db.Model):
     id = db.Column(db.Integer, primary_key=True)

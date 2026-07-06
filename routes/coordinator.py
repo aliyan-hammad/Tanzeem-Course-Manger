@@ -3,7 +3,7 @@ from datetime import datetime, date
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from extensions import db
-from models import Course, Student, FeeCollection, Expense, Attendance, ApprovalRequest, ClassSession
+from models import Course, Student, FeeCollection, Expense, Attendance, ApprovalRequest, ClassSession, CourseStaff, User
 from helpers import log_audit
 from sqlalchemy.exc import IntegrityError
 
@@ -234,47 +234,210 @@ def fees():
         
     return render_template('fees.html', fees=all_fees, active_students=active_students, courses=courses_list, selected_course_id=selected_course_id, selected_month=selected_month, pagination=None)
 
-@coordinator_bp.route('/attendance', methods=['GET', 'POST'])
+@coordinator_bp.route('/attendance', methods=['GET'])
 @login_required
 def attendance():
     if current_user.role == 'Coordinator':
-        courses = Course.query.filter_by(coordinator_id=current_user.id).all()
+        courses = Course.query.filter_by(coordinator_id=current_user.id, status='Active').all()
     else:
         courses = Course.query.filter_by(status='Active').all()
 
     if not courses:
-        return render_template('attendance.html', courses=[], active_course=None, sessions=[], selected_date=date.today().strftime('%Y-%m-%d'), today=date.today().strftime('%Y-%m-%d'), json=json, pagination=None)
+        from datetime import date
+        today = date.today().strftime('%Y-%m-%d')
+        return render_template('attendance.html', courses=[], today=today)
 
     selected_course_id = request.args.get('course_id')
-    if not selected_course_id and request.method == 'GET':
+    filter_date_str = request.args.get('filter_date', '')
+    if not selected_course_id and courses:
         selected_course_id = courses[0].id
+        
+    course = next((c for c in courses if str(c.id) == str(selected_course_id)), courses[0] if courses else None)
     
-    if request.method == 'POST':
-        selected_course_id = request.form.get('course_id')
-
-    course = next((c for c in courses if str(c.id) == str(selected_course_id)), courses[0])
-
-    if request.method == 'POST':
-        date_str = request.form.get('date')
-        subject_name = request.form.get('subject_name')
+    from datetime import date, timedelta, datetime
+    today = date.today()
+    todays_sessions = []
+    pending_past_sessions = []
+    past_sessions = []
+    active_course_staff = []
+    
+    if course:
+        todays_sessions = ClassSession.query.filter_by(course_id=course.id, date=today).order_by(ClassSession.id.desc()).all()
         
-        session_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-        new_session = ClassSession(course_id=course.id, date=session_date, subject_name=subject_name)
-        db.session.add(new_session)
-        db.session.commit()
-        log_audit('Create', 'ClassSession', record_id=new_session.id, remarks=f"Created session for {subject_name} on {date_str}")
-        flash('Session created successfully!', 'success')
-        return redirect(url_for('coordinator.attendance_bulk', course_id=course.id, session_id=new_session.id))
+        if filter_date_str:
+            try:
+                filter_date = datetime.strptime(filter_date_str, '%Y-%m-%d').date()
+                past_sessions = ClassSession.query.filter(ClassSession.course_id==course.id, ClassSession.date == filter_date, ClassSession.status == 'Submitted').order_by(ClassSession.date.desc()).all()
+            except ValueError:
+                pass
+        else:
+            three_days_ago = today - timedelta(days=3)
+            past_sessions = ClassSession.query.filter(ClassSession.course_id==course.id, ClassSession.date >= three_days_ago, ClassSession.date < today, ClassSession.status == 'Submitted').order_by(ClassSession.date.desc()).all()
+            
+        pending_past_sessions = ClassSession.query.filter(ClassSession.course_id==course.id, ClassSession.date < today, ClassSession.status == 'Pending').order_by(ClassSession.date.desc()).all()
+            
+        active_course_staff = CourseStaff.query.filter_by(course_id=course.id).all()
         
-    session_date_str = request.args.get('date', date.today().strftime('%Y-%m-%d'))
+    import json
+    subjects_list = []
+    if course and course.subjects:
+        try:
+            subjects_list = json.loads(course.subjects)
+        except Exception:
+            pass
+            
+    return render_template('attendance.html', courses=courses, active_course=course, todays_sessions=todays_sessions, pending_past_sessions=pending_past_sessions, past_sessions=past_sessions, active_course_staff=active_course_staff, today=today.strftime('%Y-%m-%d'), filter_date_str=filter_date_str, subjects=subjects_list)
+
+@coordinator_bp.route('/create_session', methods=['POST'])
+@login_required
+def create_session():
+    course_id = request.form.get('course_id')
+    subject_name = request.form.get('subject_name')
+    
+    course = Course.query.get_or_404(course_id)
+    if current_user.role == 'Coordinator' and course.coordinator_id != current_user.id:
+        flash('Access denied!', 'danger')
+        return redirect(url_for('coordinator.attendance', course_id=course.id, filter_applied=1))
+        
+    session_date_str = request.form.get('session_date')
+    from datetime import date, datetime
     try:
-        session_date = datetime.strptime(session_date_str, '%Y-%m-%d').date()
+        session_date = datetime.strptime(session_date_str, '%Y-%m-%d').date() if session_date_str else date.today()
     except ValueError:
         session_date = date.today()
-
-    all_sessions = ClassSession.query.filter_by(course_id=course.id, date=session_date).order_by(ClassSession.id.desc()).all()
+        
+    existing_session = ClassSession.query.filter_by(
+        course_id=course.id,
+        date=session_date,
+        subject_name=subject_name
+    ).first()
     
-    return render_template('attendance.html', courses=courses, active_course=course, sessions=all_sessions, selected_date=session_date_str, today=date.today().strftime('%Y-%m-%d'), json=json, pagination=None)
+    if existing_session:
+        flash(f"A session for {subject_name} is already scheduled on {session_date.strftime('%Y-%m-%d')}.", 'warning')
+        return redirect(url_for('coordinator.attendance', course_id=course.id, filter_applied=1))
+        
+    new_session = ClassSession(
+        course_id=course.id,
+        date=session_date,
+        subject_name=subject_name,
+        created_by_id=current_user.id,
+        status='Pending'
+    )
+    db.session.add(new_session)
+    db.session.commit()
+    
+    from helpers import log_audit
+    log_audit('Add', 'ClassSession', record_id=new_session.id, remarks=f"Created pending session for {course.name}")
+    
+    flash(f"Scheduled pending session for {subject_name} on {session_date.strftime('%Y-%m-%d')}.", 'success')
+    return redirect(url_for('coordinator.attendance', course_id=course.id, filter_applied=1))
+
+@coordinator_bp.route('/assign_cr', methods=['POST'])
+@login_required
+def assign_cr():
+    course_id = request.form.get('course_id')
+    student_id = request.form.get('student_id')
+    
+    course = Course.query.get_or_404(course_id)
+    student = Student.query.get_or_404(student_id)
+    
+    if current_user.role == 'Coordinator' and course.coordinator_id != current_user.id:
+        flash('Access denied!', 'danger')
+        return redirect(url_for('dashboard.index', course_id=course.id, filter_applied=1))
+        
+    # Check if student already has a user account
+    existing_user = User.query.filter_by(linked_student_id=student.id).first()
+    from helpers import generate_secure_password, provision_staff_account, generate_whatsapp_link
+    
+    if not existing_user:
+        # Generate username: firstname + reg_id
+        base_username = student.full_name.split()[0].lower() + student.registration_id
+        raw_password = generate_secure_password()
+        
+        existing_user = provision_staff_account(
+            username=base_username,
+            raw_password=raw_password,
+            role='CR',
+            full_name=student.full_name,
+            contact=student.phone,
+            linked_student_id=student.id
+        )
+        import urllib.parse
+        phone = ''.join(filter(str.isdigit, str(student.phone)))
+        wa_msg = f"Assalam o Alaikum {student.full_name},\n\nYour CR account for {course.name} has been created.\n*Username:* {base_username}\n*Password:* {raw_password}\n\nPlease log in to access your portal."
+        wa_link = f"https://api.whatsapp.com/send?phone={phone}&text={urllib.parse.quote(wa_msg)}"
+        
+        flash(f'CR Account Created! Username: {base_username} Password: {raw_password} <a href="{wa_link}" target="_blank" class="btn btn-sm btn-success rounded-pill ms-3 shadow-sm"><i class="bi bi-whatsapp"></i> Send on WhatsApp</a>', 'success')
+    
+    # Assign to CourseStaff
+    existing_staff = CourseStaff.query.filter_by(course_id=course.id, user_id=existing_user.id).first()
+    if not existing_staff:
+        new_staff = CourseStaff(course_id=course.id, user_id=existing_user.id, role_in_course='CR')
+        db.session.add(new_staff)
+        db.session.commit()
+        log_audit('Assign', 'CR', record_id=new_staff.id, remarks=f"Assigned {student.full_name} as CR to {course.name}")
+        flash('Student successfully assigned as CR.', 'success')
+    else:
+        flash('Student is already assigned to this course.', 'warning')
+        
+    return redirect(url_for('dashboard.index', course_id=course.id, filter_applied=1))
+
+@coordinator_bp.route('/revoke_cr/<int:staff_id>', methods=['POST'])
+@login_required
+def revoke_cr(staff_id):
+    staff_record = CourseStaff.query.get_or_404(staff_id)
+    course = Course.query.get(staff_record.course_id)
+    
+    if current_user.role == 'Coordinator' and course.coordinator_id != current_user.id:
+        flash('Access denied!', 'danger')
+        return redirect(url_for('dashboard.index', course_id=course.id, filter_applied=1))
+        
+    target_user = User.query.get(staff_record.user_id)
+    db.session.delete(staff_record)
+    db.session.commit()
+    
+    import urllib.parse
+    if target_user and target_user.contact:
+        phone = ''.join(filter(str.isdigit, str(target_user.contact)))
+        wa_msg = f"Assalam o Alaikum {target_user.full_name},\n\nYour CR access for the course '{course.name}' has been revoked by the administration."
+        wa_link = f"https://api.whatsapp.com/send?phone={phone}&text={urllib.parse.quote(wa_msg)}"
+        flash(f'Staff access revoked from course. <a href="{wa_link}" target="_blank" class="btn btn-sm btn-success rounded-pill ms-3 shadow-sm"><i class="bi bi-whatsapp"></i> Notify on WhatsApp</a>', 'success')
+    else:
+        flash('Staff access revoked from course.', 'success')
+        
+    from helpers import log_audit
+    log_audit('Revoke', 'CR', record_id=staff_id, remarks=f"Revoked CR access for {course.name}")
+    return redirect(url_for('dashboard.index', course_id=course.id, filter_applied=1))
+
+@coordinator_bp.route('/reset_cr_password/<int:staff_id>', methods=['POST'])
+@login_required
+def reset_cr_password(staff_id):
+    staff_record = CourseStaff.query.get_or_404(staff_id)
+    course = Course.query.get(staff_record.course_id)
+    
+    if current_user.role == 'Coordinator' and course.coordinator_id != current_user.id:
+        flash('Access denied!', 'danger')
+        return redirect(url_for('dashboard.index', course_id=course.id, filter_applied=1))
+        
+    target_user = User.query.get(staff_record.user_id)
+    if target_user:
+        from helpers import generate_secure_password
+        from werkzeug.security import generate_password_hash
+        new_password = generate_secure_password()
+        target_user.password_hash = generate_password_hash(new_password)
+        db.session.commit()
+        from helpers import log_audit
+        log_audit('Update', 'User', record_id=target_user.id, remarks=f"Password reset for CR {target_user.username}")
+        import urllib.parse
+        phone = ''.join(filter(str.isdigit, str(target_user.contact))) if target_user.contact else ''
+        wa_msg = f"Assalam o Alaikum {target_user.full_name},\n\nYour CR account password for {course.name} has been reset.\n*New Password:* {new_password}\n\nPlease log in with your new password."
+        wa_link = f"https://api.whatsapp.com/send?phone={phone}&text={urllib.parse.quote(wa_msg)}"
+        
+        flash(f'Password reset successfully! New Password for {target_user.username} is: {new_password} <a href="{wa_link}" target="_blank" class="btn btn-sm btn-success rounded-pill ms-3 shadow-sm"><i class="bi bi-whatsapp"></i> Send on WhatsApp</a>', 'success')
+    else:
+        flash('User account not found.', 'danger')
+        
+    return redirect(url_for('dashboard.index', course_id=course.id, filter_applied=1))
 
 @coordinator_bp.route('/attendance/<int:course_id>/<int:session_id>', methods=['GET', 'POST'])
 @login_required
@@ -311,6 +474,8 @@ def attendance_bulk(course_id, session_id):
     attendance_map = {att.student_id: att.status for att in existing_attendance}
     
     return render_template('attendance_bulk.html', course=course, session_obj=session_obj, students=students, attendance_map=attendance_map)
+
+
 
 @coordinator_bp.route('/edit_session/<int:session_id>', methods=['POST'])
 @login_required
