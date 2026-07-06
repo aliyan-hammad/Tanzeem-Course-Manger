@@ -86,6 +86,19 @@ def create_app():
     # Initialize Database & Seeds
     with app.app_context():
         db.create_all()
+        
+        # Apply runtime migrations for Vercel PostgreSQL environments
+        from sqlalchemy import text
+        try:
+            # Need to double quote "user" for Postgres, SQLite handles it gracefully or tolerates it
+            db.session.execute(text('ALTER TABLE "user" ADD COLUMN salary_type VARCHAR(20)'))
+            db.session.execute(text('ALTER TABLE "user" ADD COLUMN salary_amount FLOAT DEFAULT 0.0'))
+            db.session.execute(text('ALTER TABLE "user" ADD COLUMN bank_details VARCHAR(255)'))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            pass # Columns already exist
+            
         # Seed default Admin User
         if not models.User.query.filter_by(username='admin').first():
             hashed_admin = generate_password_hash('admin123')
