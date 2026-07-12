@@ -349,6 +349,9 @@ def assign_cr():
     existing_user = User.query.filter_by(linked_student_id=student.id).first()
     from helpers import generate_secure_password, provision_staff_account, generate_whatsapp_link
     
+    import urllib.parse
+    app_url = request.url_root.rstrip('/')
+    
     if not existing_user:
         # Generate username: firstname + reg_id
         base_username = student.full_name.split()[0].lower() + student.registration_id
@@ -362,12 +365,24 @@ def assign_cr():
             contact=student.phone,
             linked_student_id=student.id
         )
-        import urllib.parse
+        
         phone = ''.join(filter(str.isdigit, str(student.phone)))
-        wa_msg = f"Assalam o Alaikum {student.full_name},\n\nYour CR account for {course.name} has been created.\n*Username:* {base_username}\n*Password:* {raw_password}\n\nPlease log in to access your portal."
+        wa_msg = f"Assalam-o-Alaikum {student.full_name}. Alhamdulillah, you have been chosen as the Class Representative (CR) for the '{course.name}'. Serving the students of the Quran is a beautiful privilege. Here are your secure login details to manage daily attendance:\nLink: {app_url}\nUsername: {base_username}\nPassword: {raw_password}\nMay Allah make this responsibility easy and rewarding for you. JazakAllah Khair!"
         wa_link = f"https://api.whatsapp.com/send?phone={phone}&text={urllib.parse.quote(wa_msg)}"
         
         flash(f'CR Account Created! Username: {base_username} Password: {raw_password} <a href="{wa_link}" target="_blank" class="btn btn-sm btn-success rounded-pill ms-3 shadow-sm"><i class="bi bi-whatsapp"></i> Send on WhatsApp</a>', 'success')
+    else:
+        from werkzeug.security import generate_password_hash
+        raw_password = generate_secure_password()
+        existing_user.password_hash = generate_password_hash(raw_password)
+        existing_user.status = 'Active'
+        db.session.commit()
+        
+        phone = ''.join(filter(str.isdigit, str(student.phone)))
+        wa_msg = f"Assalam-o-Alaikum {student.full_name}. Your CR access for the '{course.name}' has been successfully updated. Please use the new credentials below to continue your khidmat:\nLink: {app_url}\nUsername: {existing_user.username}\nPassword: {raw_password}\nMay Allah put Barakah in your continued efforts. JazakAllah!"
+        wa_link = f"https://api.whatsapp.com/send?phone={phone}&text={urllib.parse.quote(wa_msg)}"
+        
+        flash(f'CR Account Reactivated! Username: {existing_user.username} Password: {raw_password} <a href="{wa_link}" target="_blank" class="btn btn-sm btn-success rounded-pill ms-3 shadow-sm"><i class="bi bi-whatsapp"></i> Send on WhatsApp</a>', 'success')
     
     # Assign to CourseStaff
     existing_staff = CourseStaff.query.filter_by(course_id=course.id, user_id=existing_user.id).first()
@@ -394,12 +409,14 @@ def revoke_cr(staff_id):
         
     target_user = User.query.get(staff_record.user_id)
     db.session.delete(staff_record)
+    if target_user:
+        target_user.status = 'Inactive'
     db.session.commit()
     
     import urllib.parse
     if target_user and target_user.contact:
         phone = ''.join(filter(str.isdigit, str(target_user.contact)))
-        wa_msg = f"Assalam o Alaikum {target_user.full_name},\n\nYour CR access for the course '{course.name}' has been revoked by the administration."
+        wa_msg = f"Assalam-o-Alaikum {target_user.full_name}. We want to express our heartfelt gratitude for your dedication and khidmat as the CR for the '{course.name}'. Your administrative duties have now been transitioned. May Allah (SWT) accept your efforts, bless your time, and reward you immensely for helping the class. JazakAllah Khair!"
         wa_link = f"https://api.whatsapp.com/send?phone={phone}&text={urllib.parse.quote(wa_msg)}"
         flash(f'Staff access revoked from course. <a href="{wa_link}" target="_blank" class="btn btn-sm btn-success rounded-pill ms-3 shadow-sm"><i class="bi bi-whatsapp"></i> Notify on WhatsApp</a>', 'success')
     else:
@@ -429,8 +446,9 @@ def reset_cr_password(staff_id):
         from helpers import log_audit
         log_audit('Update', 'User', record_id=target_user.id, remarks=f"Password reset for CR {target_user.username}")
         import urllib.parse
+        app_url = request.url_root.rstrip('/')
         phone = ''.join(filter(str.isdigit, str(target_user.contact))) if target_user.contact else ''
-        wa_msg = f"Assalam o Alaikum {target_user.full_name},\n\nYour CR account password for {course.name} has been reset.\n*New Password:* {new_password}\n\nPlease log in with your new password."
+        wa_msg = f"Assalam-o-Alaikum {target_user.full_name}. The password for your CR portal for the '{course.name}' has been securely reset. You can now log in and continue your khidmat using the new details below:\n\nLink: {app_url}\nUsername: {target_user.username}\nNew Password: {new_password}\n\nMay Allah bless your time and efforts. JazakAllah Khair!"
         wa_link = f"https://api.whatsapp.com/send?phone={phone}&text={urllib.parse.quote(wa_msg)}"
         
         flash(f'Password reset successfully! New Password for {target_user.username} is: {new_password} <a href="{wa_link}" target="_blank" class="btn btn-sm btn-success rounded-pill ms-3 shadow-sm"><i class="bi bi-whatsapp"></i> Send on WhatsApp</a>', 'success')

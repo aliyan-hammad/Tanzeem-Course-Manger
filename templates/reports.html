@@ -7,18 +7,17 @@
 <div class="card shadow-sm border-0 mb-4">
     <div class="card-body">
         <form action="{{ url_for('admin.reports') }}" method="POST" class="row g-3 align-items-end">
-            <div class="col-md-2">
-                <label for="start_date" class="form-label font-weight-bold" style="font-size: 0.85rem;">Start Date</label>
-                <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date }}" required>
-            </div>
-            <div class="col-md-2">
-                <label for="end_date" class="form-label font-weight-bold" style="font-size: 0.85rem;">End Date</label>
-                <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date }}" required>
+            <div class="col-md-3" id="month_filter_div">
+                <label for="report_month" class="form-label font-weight-bold" style="font-size: 0.85rem;">Report Month</label>
+                <select class="form-select" id="report_month" name="report_month">
+                    {% for m in months_list %}
+                    <option value="{{ m }}" {% if m == report_month %}selected{% endif %}>{{ m | format_fee_month }}</option>
+                    {% endfor %}
+                </select>
             </div>
             <div class="col-12 col-sm-6 col-lg-3">
-                <label for="course_id" class="form-label font-weight-bold" style="font-size: 0.85rem;">Course Filter</label>
+                <label for="course_id" class="form-label font-weight-bold" style="font-size: 0.85rem;">Course</label>
                 <select class="form-select" id="course_id" name="course_id">
-                    <option value="" {% if not selected_course_id %}selected{% endif %}>All Courses</option>
                     {% for course in courses %}
                     <option value="{{ course.id }}" {% if selected_course_id|string == course.id|string %}selected{% endif %}>{{ course.name }}</option>
                     {% endfor %}
@@ -44,27 +43,30 @@
 <!-- KPI Summary Cards (Specific to the Filtered Date Range) -->
 <div class="row g-4 mb-4">
     <div class="col-md-4">
-        <div class="card bg-success text-white shadow-sm border-0">
-            <div class="card-body text-center py-3">
-                <h6 class="text-uppercase text-white-50 small mb-1">Fees Collected (in Range)</h6>
+        <div class="card bg-success text-white shadow-sm border-0 h-100">
+            <div class="card-body text-center py-3 d-flex flex-column justify-content-center">
+                <h6 class="text-uppercase text-white-50 small mb-1">Fees Collected ({{ report_month | format_fee_month }})</h6>
                 <h3 class="mb-0">Rs. {{ "%.2f"|format(total_fees) }}</h3>
             </div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card bg-danger text-white shadow-sm border-0">
-            <div class="card-body text-center py-3">
-                <h6 class="text-uppercase text-white-50 small mb-1">Expenses (in Range)</h6>
+        <div class="card bg-danger text-white shadow-sm border-0 h-100">
+            <div class="card-body text-center py-3 d-flex flex-column justify-content-center">
+                <h6 class="text-uppercase text-white-50 small mb-1">Expenses ({{ report_month | format_fee_month }})</h6>
                 <h3 class="mb-0">Rs. {{ "%.2f"|format(total_expenses) }}</h3>
             </div>
         </div>
     </div>
     <div class="col-md-4">
-        {% set net_profit = total_fees - total_expenses %}
-        <div class="card {% if net_profit >= 0 %}bg-info{% else %}bg-warning text-dark{% endif %} text-white shadow-sm border-0">
-            <div class="card-body text-center py-3">
-                <h6 class="text-uppercase text-white-50 small mb-1">Net Balance (in Range)</h6>
-                <h3 class="mb-0">Rs. {{ "%.2f"|format(net_profit) }}</h3>
+        <div class="card {% if cumulative_net_balance >= 0 %}bg-info{% else %}bg-warning text-dark{% endif %} text-white shadow-sm border-0 h-100">
+            <div class="card-body text-center py-3 d-flex flex-column justify-content-center">
+                <h6 class="text-uppercase text-white-50 small mb-1">Net Balance</h6>
+                <h3 class="mb-0">Rs. {{ "%.2f"|format(cumulative_net_balance) }}</h3>
+                <small class="text-white-50 d-block mt-2" style="font-size: 0.7rem;">
+                    {{ prev_month_str | format_fee_month }} Bal: Rs. {{ "%.0f"|format(prev_cumulative_net_balance) }} | 
+                    {{ report_month | format_fee_month }} Net: Rs. {{ "%.0f"|format(current_net_profit) }}
+                </small>
             </div>
         </div>
     </div>
@@ -163,7 +165,10 @@
     <div class="tab-pane fade" id="fees" role="tabpanel" aria-labelledby="fees-tab">
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white d-flex flex-column flex-md-row justify-content-between align-items-md-center py-3 gap-2">
-                <h5 class="mb-0">Fee Logs ({{ start_date }} to {{ end_date }})</h5>
+                <div>
+                    <h5 class="mb-0">Fee Logs <span class="badge bg-success ms-2">Total: Rs. {{ "%.0f"|format(total_fees) }}</span></h5>
+                    <small class="text-muted">{{ start_date }} to {{ end_date }}</small>
+                </div>
                 <div class="d-flex gap-2">
                     <button type="button" class="btn btn-sm btn-outline-danger" style="width: 80px;" onclick="exportToPDF('fees_wrapper', 'Fee_Collection_Report')">
                         <i class="bi bi-file-pdf"></i> PDF
@@ -188,6 +193,7 @@
                                 <th data-priority="6">Course</th>
                                 <th data-priority="7">Payment Method</th>
                                 <th data-priority="8">Collected By</th>
+                                <th data-priority="3">Fee Cycle</th>
                                 <th data-priority="1">Amount Paid</th>
                                 <th data-priority="2">Date Collected</th>
                             </tr>
@@ -207,11 +213,19 @@
                                         System Admin
                                     {% endif %}
                                 </td>
+                                <td><span class="badge bg-secondary">{{ fee.fee_month | format_fee_month }}</span></td>
                                 <td class="text-success fw-bold">Rs. {{ "%.2f"|format(fee.amount_paid) }}</td>
                                 <td>{{ fee.date_collected.strftime('%Y-%m-%d %H:%M') }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
+                        <tfoot class="d-none">
+                            <tr class="table-light fw-bold">
+                                <td colspan="7" class="text-end">Total Fees Collected:</td>
+                                <td class="text-success">Rs. {{ "%.0f"|format(total_fees) }}</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
             </div>
@@ -222,7 +236,10 @@
     <div class="tab-pane fade" id="expenses" role="tabpanel" aria-labelledby="expenses-tab">
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white d-flex flex-column flex-md-row justify-content-between align-items-md-center py-3 gap-2">
-                <h5 class="mb-0">Expense Ledger ({{ start_date }} to {{ end_date }})</h5>
+                <div>
+                    <h5 class="mb-0">Expense Ledger <span class="badge bg-danger ms-2">Total: Rs. {{ "%.0f"|format(total_expenses) }}</span></h5>
+                    <small class="text-muted">{{ start_date }} to {{ end_date }}</small>
+                </div>
                 <div class="d-flex gap-2">
                     <button type="button" class="btn btn-sm btn-outline-danger" style="width: 80px;" onclick="exportToPDF('expenses_wrapper', 'Expenses_Report')">
                         <i class="bi bi-file-pdf"></i> PDF
@@ -261,6 +278,13 @@
                             </tr>
                             {% endfor %}
                         </tbody>
+                        <tfoot class="d-none">
+                            <tr class="table-light fw-bold">
+                                <td colspan="4" class="text-end">Total Expenses:</td>
+                                <td class="text-danger">Rs. {{ "%.0f"|format(total_expenses) }}</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
             </div>
@@ -297,9 +321,9 @@
                                 <th>Reg ID</th>
                                 <th>Student Name</th>
                                 <th>Course</th>
-                                <th class="text-center">Present Days</th>
-                                <th class="text-center">Absent Days</th>
-                                <th class="text-center">Leave Days</th>
+                                <th class="text-center">Present Sessions</th>
+                                <th class="text-center">Absent Sessions</th>
+                                <th class="text-center">Leave Sessions</th>
                                 <th class="text-center">Total Sessions</th>
                                 <th class="text-center">Attendance %</th>
                             </tr>
@@ -363,10 +387,15 @@ function exportToExcel(tableId, filename) {
         $('#' + tableId).DataTable().destroy();
     }
     
+    const tfoot = document.querySelector('#' + tableId + ' tfoot');
+    if (tfoot) tfoot.classList.remove('d-none');
+    
     const table = document.getElementById(tableId);
     const wb = XLSX.utils.table_to_book(table, { sheet: "Report" });
     const formattedDate = new Date().toISOString().slice(0, 10);
     XLSX.writeFile(wb, `${filename}_${formattedDate}.xlsx`);
+    
+    if (tfoot) tfoot.classList.add('d-none');
     
     // Re-initialize DataTable
     $('#' + tableId).DataTable(dtOptions);
@@ -409,6 +438,9 @@ function exportToPDF(elementId, filename) {
             }
         });
         
+        const tfoot = document.querySelector('#' + tableId + ' tfoot');
+        if (tfoot) tfoot.classList.remove('d-none');
+        
         // Save report directly as PDF
         html2pdf().set(opt).from(element).save().then(() => {
             // Remove the temporary classes/styles we just added
@@ -416,6 +448,8 @@ function exportToPDF(elementId, filename) {
                 row.classList.remove('break-here');
                 row.style.pageBreakBefore = '';
             });
+            
+            if (tfoot) tfoot.classList.add('d-none');
             
             // Re-initialize DataTable after PDF generation is fully requested
             if (tableId) {
@@ -445,15 +479,17 @@ document.addEventListener("DOMContentLoaded", function() {
         el.addEventListener('shown.bs.tab', function (e) {
             var target = e.target.getAttribute('data-bs-target');
             sessionStorage.setItem('reportsActiveTab', target);
-            toggleSubjectFilter(target);
+            toggleFilters(target);
             
             // Recalculate DataTables responsive layout for newly visible tab
             $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust().responsive.recalc();
         });
     });
     
-    function toggleSubjectFilter(targetId) {
+    function toggleFilters(targetId) {
         var subjectDiv = document.getElementById('subject_filter_div');
+        var monthDiv = document.getElementById('month_filter_div');
+        
         if (subjectDiv) {
             if (targetId === '#attendance') {
                 subjectDiv.style.display = 'block';
@@ -461,11 +497,19 @@ document.addEventListener("DOMContentLoaded", function() {
                 subjectDiv.style.display = 'none';
             }
         }
+        
+        if (monthDiv) {
+            if (targetId === '#students') {
+                monthDiv.style.display = 'none';
+            } else {
+                monthDiv.style.display = 'block';
+            }
+        }
     }
     
     // Initial toggle
     var currentTab = sessionStorage.getItem('reportsActiveTab') || '#students';
-    toggleSubjectFilter(currentTab);
+    toggleFilters(currentTab);
 });
 </script>
 {% endblock %}

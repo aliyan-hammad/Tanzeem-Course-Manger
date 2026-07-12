@@ -13,7 +13,7 @@
             <div class="col-12 col-md-4">
                 <label for="course_id" class="form-label fw-bold text-secondary">Course</label>
                 <select class="form-select" id="course_id" name="course_id" onchange="this.form.submit()">
-                    <option value="" {% if not selected_course_id %}selected{% endif %}>All Courses</option>
+                    
                     {% for course in courses %}
                     <option value="{{ course.id }}" {% if selected_course_id|string == course.id|string %}selected{% endif %}>{{ course.name }}</option>
                     {% endfor %}
@@ -34,70 +34,192 @@
     </div>
 </div>
 
-{% if selected_course_id and selected_course_id != '' %}
-<div class="card shadow-sm border mb-4">
-    <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3">
-        <div>
-            <h6 class="mb-1 fw-bold text-secondary"><i class="bi bi-arrow-return-right me-2"></i>Assigned CRs for Selected Course</h6>
-            <div class="d-flex flex-wrap gap-2">
-                {% if active_course_staff %}
-                    {% for staff in active_course_staff %}
-                    <div class="badge bg-light text-dark border p-2 d-flex align-items-center gap-2">
-                        <span><strong class="text-primary">{{ staff.role_in_course }}:</strong> {{ staff.user.full_name }}</span>
-                        <form action="{{ url_for('coordinator.reset_cr_password', staff_id=staff.id) }}" method="POST" class="d-inline m-0 p-0" onsubmit="return confirm('Generate a new random password for this CR?');">
-                            <button type="submit" class="btn btn-sm btn-warning py-0 px-1 rounded me-1" title="Reset Password"><i class="bi bi-key"></i></button>
-                        </form>
-                        <form action="{{ url_for('coordinator.revoke_cr', staff_id=staff.id) }}" method="POST" class="d-inline m-0 p-0" onsubmit="return confirm('Revoke this staff member\'s access?');">
-                            <button type="submit" class="btn btn-sm btn-danger py-0 px-1 rounded" title="Revoke Access"><i class="bi bi-x"></i></button>
-                        </form>
+
+{% if course_overview %}
+<div class="card shadow-sm border-0 mb-4 bg-white rounded-3">
+    <div class="card-header bg-primary text-white py-3">
+        <h5 class="mb-0"><i class="bi bi-journal-richtext me-2"></i>Course Command Center: {{ course_overview.course.name }}</h5>
+    </div>
+    <div class="card-body">
+        <div class="row g-4">
+        <div class="row g-4">
+            <!-- Left: Logistics -->
+            <div class="col-md-4">
+                <div class="p-3 bg-light rounded h-100 border-start border-primary border-4 scroll-fade-container">
+                    <h6 class="fw-bold text-secondary mb-3 text-uppercase" style="letter-spacing: 1px;"><i class="bi bi-info-circle me-1"></i> Logistics</h6>
+                    <div class="card-scrollable-content">
+                        <p class="mb-2"><strong><i class="bi bi-clock-history text-primary"></i> Total Duration:</strong> <span class="ms-1">{{ course_overview.course.duration }}</span></p>
+                        <p class="mb-2"><strong><i class="bi bi-people-fill text-info"></i> Active Students:</strong> <span class="badge bg-info text-dark ms-1">{{ total_active_students }}</span></p>
+                        <p class="mb-2"><strong><i class="bi bi-cash-coin text-success"></i> Students Paid:</strong> <span class="badge bg-success ms-1">{{ students_paid_count }}</span> <span class="text-muted" style="font-size: 0.75rem;">({{ current_cycle_month_name if current_cycle_month_name else 'Current Cycle' }})</span></p>
+                        {% if next_cycle_month_name %}
+                        <p class="mb-2"><strong><i class="bi bi-cash-coin text-info"></i> Students Paid:</strong> <span class="badge bg-info ms-1">{{ next_cycle_students_paid_count }}</span> <span class="text-muted" style="font-size: 0.75rem;">({{ next_cycle_month_name }} - Advance)</span></p>
+                        {% endif %}
+                        <div class="mb-2">
+                            <strong><i class="bi bi-check2-all text-success"></i> Sessions Conducted:</strong> <span class="badge bg-success ms-1">{{ course_overview.total_sessions }}</span>
+                            {% if course_overview.subject_breakdown %}
+                            <div class="mt-1 font-monospace" style="font-size: 0.85rem; color: #555;">
+                                {% for sub, count in course_overview.subject_breakdown.items() %}
+                                <div class="ms-3">
+                                    <span class="text-muted">{% if loop.last %}└─{% else %}├─{% endif %}</span> 
+                                    {{ sub }}: <span class="fw-bold">{{ count }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
                     </div>
-                    {% endfor %}
-                {% else %}
-                    <span class="text-muted small">No CRs assigned yet.</span>
-                {% endif %}
+                </div>
             </div>
-        </div>
-        <div>
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#assignCRModal"><i class="bi bi-person-plus me-1"></i> Assign CR</button>
+            
+            <!-- Middle: Leadership -->
+            <div class="col-md-4">
+                <div class="p-3 bg-light rounded h-100 border-start border-warning border-4 scroll-fade-container">
+                    <h6 class="fw-bold text-secondary mb-3 text-uppercase" style="letter-spacing: 1px;"><i class="bi bi-star-fill text-warning me-1"></i> Leadership</h6>
+                    <div class="card-scrollable-content">
+                        <div class="mb-3">
+                            <strong class="d-block text-muted small">Course Coordinator</strong>
+                            <div class="d-flex align-items-center mt-1">
+                                <i class="bi bi-person-badge fs-4 text-warning me-2"></i>
+                                <span class="fw-bold text-capitalize">{{ course_overview.course.coordinator.full_name if course_overview.course.coordinator else 'Unassigned' }}</span>
+                            </div>
+                        </div>
+                        <div>
+                            <strong class="d-block text-muted small">Class Representative (CR)</strong>
+                            {% if course_overview.crs %}
+                                {% for cr in course_overview.crs %}
+                                <div class="d-flex align-items-center mt-1">
+                                    <i class="bi bi-person-video3 fs-5 text-secondary me-2"></i>
+                                    <span class="text-capitalize">{{ cr.user.full_name }}</span>
+                                </div>
+                                {% endfor %}
+                                
+                                {% if current_user.role == 'Coordinator' %}
+                                <div class="mt-3 pt-2 border-top border-warning">
+                                    <strong class="d-block text-muted small mb-2">CR Management</strong>
+                                    <div class="d-flex gap-1 flex-nowrap">
+                                        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#assignCrModal" title="Assign CR">
+                                            <i class="bi bi-person-plus"></i> <span class="d-none d-xl-inline">Assign</span>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#resetCrModal" title="Reset Password">
+                                            <i class="bi bi-key"></i> <span class="d-none d-xl-inline">Reset</span>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#revokeCrModal" title="Revoke CR">
+                                            <i class="bi bi-person-x"></i> <span class="d-none d-xl-inline">Revoke</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-danger small"><i class="bi bi-exclamation-triangle"></i> No active CR</span>
+                                {% if current_user.role == 'Coordinator' %}
+                                <div class="mt-2">
+                                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#assignCrModal">
+                                        <i class="bi bi-person-plus"></i> Assign New CR
+                                    </button>
+                                </div>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right: Academic Team -->
+            <div class="col-md-4">
+                <div class="p-3 bg-light rounded h-100 border-start border-success border-4 scroll-fade-container">
+                    <h6 class="fw-bold text-secondary mb-3 text-uppercase" style="letter-spacing: 1px;"><i class="bi bi-easel text-success me-1"></i> Academic Team</h6>
+                    <div class="card-scrollable-content">
+                        {% if course_overview.teachers %}
+                            <div class="mb-3">
+                                <strong class="d-block text-muted small mb-2">Teachers & Subjects</strong>
+                                <ul class="list-unstyled mb-0">
+                                    {% for teacher in course_overview.teachers %}
+                                    <li class="mb-3">
+                                        <span class="fw-bold text-dark d-block mb-1 text-capitalize"><i class="bi bi-person-video2 text-secondary"></i> {{ teacher.name }}</span>
+                                        <div class="ms-3 d-flex flex-wrap gap-1">
+                                            {% set colors = [
+                                                ('bg-success-subtle', 'text-success'),
+                                                ('bg-primary-subtle', 'text-primary'),
+                                                ('bg-danger-subtle', 'text-danger'),
+                                                ('bg-warning-subtle', 'text-warning', 'text-dark'),
+                                                ('bg-info-subtle', 'text-info', 'text-dark'),
+                                                ('bg-secondary-subtle', 'text-secondary')
+                                            ] %}
+                                            {% for sub in teacher.subjects.keys() %}
+                                            {% set color_idx = loop.index0 % colors|length %}
+                                            {% set c = colors[color_idx] %}
+                                            <span class="badge {{ c[0] }} {{ c[1] }} border-0 px-2 py-1 shadow-sm">{{ sub }}</span>
+                                            {% endfor %}
+                                        </div>
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+                        
+                        {% if course_overview.tas %}
+                            <div>
+                                <strong class="d-block text-muted small mb-2">Teaching Assistants (TAs)</strong>
+                                <ul class="list-unstyled mb-0">
+                                    {% for ta in course_overview.tas %}
+                                    <li class="small text-dark">
+                                        <i class="bi bi-person-fill-check text-success"></i> <strong class="text-capitalize">{{ ta.user.full_name }}</strong> 
+                                        <span class="text-muted text-capitalize">(Assists: {{ ta.assigned_teacher.full_name if ta.assigned_teacher else 'Unknown' }})</span>
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 {% endif %}
 
 
+
 <!-- Admin Role KPI Dashboard -->
 {% if current_user.role == 'Admin' %}
-<div class="row g-4 mb-4">
-    <div class="col-12 col-sm-6 col-lg-3">
+<div class="row g-4 mb-4 justify-content-center">
+    <div class="col-12 col-sm-6 col-lg-4">
         <div class="card bg-white text-dark shadow-sm border-0 h-100">
             <div class="card-body py-3">
-                <h6 class="text-uppercase text-muted small mb-1">Total Active Students</h6>
-                <h3 class="mb-0 fw-bold text-primary">{{ total_active_students }}</h3>
+                <h6 class="text-uppercase text-muted small mb-1">Cycle Collections ({{ current_cycle_month_name if current_cycle_month_name else 'Current' }})</h6>
+                <h3 class="mb-0 fw-bold text-success">Rs. {{ "%.2f"|format(cycle_collections) }}</h3>
             </div>
         </div>
     </div>
-    <div class="col-12 col-sm-6 col-lg-3">
+    <div class="col-12 col-sm-6 col-lg-4">
         <div class="card bg-white text-dark shadow-sm border-0 h-100">
             <div class="card-body py-3">
-                <h6 class="text-uppercase text-muted small mb-1">Total Fee Collected</h6>
-                <h3 class="mb-0 fw-bold text-success">Rs. {{ "%.2f"|format(total_fees) }}</h3>
-                <small class="text-muted mt-2 d-block"><i class="bi bi-people-fill"></i> {{ students_paid_count }} Students Paid</small>
+                <h6 class="text-uppercase text-muted small mb-1">Cycle Expenses ({{ current_cycle_month_name if current_cycle_month_name else 'Current' }})</h6>
+                <h3 class="mb-0 fw-bold text-danger">Rs. {{ "%.2f"|format(cycle_expenses) }}</h3>
             </div>
         </div>
     </div>
-    <div class="col-12 col-sm-6 col-lg-3">
-        <div class="card bg-white text-dark shadow-sm border-0 h-100">
-            <div class="card-body py-3">
-                <h6 class="text-uppercase text-muted small mb-1">Total Expenses</h6>
-                <h3 class="mb-0 fw-bold text-danger">Rs. {{ "%.2f"|format(total_expenses) }}</h3>
-            </div>
-        </div>
-    </div>
-    <div class="col-12 col-sm-6 col-lg-3">
+    <div class="col-12 col-sm-6 col-lg-4">
         <div class="card bg-white text-dark shadow-sm border-0 h-100">
             <div class="card-body py-3">
                 <h6 class="text-uppercase text-muted small mb-1">Net Balance</h6>
                 <h3 class="mb-0 fw-bold text-secondary">Rs. {{ "%.2f"|format(net_balance) }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-lg-6">
+        <div class="card bg-white text-dark shadow-sm border-0 h-100">
+            <div class="card-body py-3">
+                <h6 class="text-uppercase text-muted small mb-1">Total Fee Collected</h6>
+                <h3 class="mb-0 fw-bold text-success">Rs. {{ "%.2f"|format(total_fees) }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-lg-6">
+        <div class="card bg-white text-dark shadow-sm border-0 h-100">
+            <div class="card-body py-3">
+                <h6 class="text-uppercase text-muted small mb-1">Total Expenses</h6>
+                <h3 class="mb-0 fw-bold text-danger">Rs. {{ "%.2f"|format(total_expenses) }}</h3>
             </div>
         </div>
     </div>
@@ -138,66 +260,57 @@
 
 <!-- Coordinator Role KPI Dashboard -->
 {% else %}
-<div class="row g-4 mb-4">
-    <div class="col-12 col-sm-6 col-lg-3">
+<div class="row g-4 mb-4 justify-content-center">
+    <div class="col-12 col-sm-6 col-lg-4">
         <div class="card bg-white text-dark shadow-sm border-0 h-100">
-            <div class="card-body">
+            <div class="card-body py-3">
                 <h6 class="text-uppercase text-muted small mb-1">Today's Collections</h6>
                 <h3 class="mb-0 fw-bold text-success">Rs. {{ "%.2f"|format(today_collections) }}</h3>
             </div>
         </div>
     </div>
-    <div class="col-12 col-sm-6 col-lg-3">
+    <div class="col-12 col-sm-6 col-lg-4">
         <div class="card bg-white text-dark shadow-sm border-0 h-100">
-            <div class="card-body">
-                <h6 class="text-uppercase text-muted small mb-1">This Month's Collections</h6>
+            <div class="card-body py-3">
+                <h6 class="text-uppercase text-muted small mb-1">Cycle Collections ({{ current_cycle_month_name if current_cycle_month_name else 'Current' }})</h6>
                 <h3 class="mb-0 fw-bold text-primary">Rs. {{ "%.2f"|format(monthly_collections) }}</h3>
             </div>
         </div>
     </div>
-    <div class="col-12 col-sm-6 col-lg-3">
+    <div class="col-12 col-sm-6 col-lg-4">
         <div class="card bg-white text-dark shadow-sm border-0 h-100">
-            <div class="card-body">
+            <div class="card-body py-3">
+                <h6 class="text-uppercase text-muted small mb-1">Cycle Expenses ({{ current_cycle_month_name if current_cycle_month_name else 'Current' }})</h6>
+                <h3 class="mb-0 fw-bold text-warning">Rs. {{ "%.2f"|format(monthly_expenses) }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-lg-4">
+        <div class="card bg-white text-dark shadow-sm border-0 h-100">
+            <div class="card-body py-3">
+                <h6 class="text-uppercase text-muted small mb-1">Total Collection</h6>
+                <h3 class="mb-0 fw-bold text-success">Rs. {{ "%.2f"|format(total_fees) }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-lg-4">
+        <div class="card bg-white text-dark shadow-sm border-0 h-100">
+            <div class="card-body py-3">
                 <h6 class="text-uppercase text-muted small mb-1">Total Expenses Logged</h6>
                 <h3 class="mb-0 fw-bold text-danger">Rs. {{ "%.2f"|format(expenses_added) }}</h3>
             </div>
         </div>
     </div>
-    <div class="col-12 col-sm-6 col-lg-3">
+    <div class="col-12 col-sm-6 col-lg-4">
         <div class="card bg-white text-dark shadow-sm border-0 h-100">
-            <div class="card-body">
+            <div class="card-body py-3">
                 <h6 class="text-uppercase text-muted small mb-1">Net Balance</h6>
                 <h3 class="mb-0 fw-bold text-secondary">Rs. {{ "%.2f"|format(net_balance) }}</h3>
             </div>
         </div>
     </div>
 </div>
-<div class="row g-4 mb-4">
-    <div class="col-md-4">
-        <div class="card bg-white text-dark shadow-sm border-0 h-100">
-            <div class="card-body">
-                <h6 class="text-uppercase text-muted small mb-1"><i class="bi bi-cash"></i> Hand Cash (Filtered)</h6>
-                <h3 class="mb-0 fw-bold text-info">Rs. {{ "%.2f"|format(hand_cash) }}</h3>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card bg-white text-dark shadow-sm border-0 h-100">
-            <div class="card-body">
-                <h6 class="text-uppercase text-muted small mb-1"><i class="bi bi-bank"></i> In Account (Filtered)</h6>
-                <h3 class="mb-0 fw-bold text-dark">Rs. {{ "%.2f"|format(in_account) }}</h3>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card bg-white text-dark shadow-sm border-0 h-100">
-            <div class="card-body">
-                <h6 class="text-uppercase text-muted small mb-1"><i class="bi bi-people"></i> Students Paid (Filtered)</h6>
-                <h3 class="mb-0 fw-bold text-success">{{ students_paid_count }}</h3>
-            </div>
-        </div>
-    </div>
-</div>
+
 
 <div class="row mb-4">
     <div class="col-12">
@@ -227,7 +340,7 @@
                 });
             </script>
             <div class="card-body p-0">
-                <ul class="nav nav-tabs nav-fill mb-0" id="irregularitiesTabs" role="tablist">
+                <ul class="nav nav-tabs nav-fill mb-0 nav-tabs-scrollable" id="irregularitiesTabs" role="tablist">
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active text-dark fw-bold" id="yesterday-tab" data-bs-toggle="tab" data-bs-target="#yesterday-absent" type="button" role="tab">
                             <span class="d-none d-sm-inline">Yesterday's Absentees</span><span class="d-inline d-sm-none">Yesterday</span>
@@ -668,6 +781,157 @@ function exportToPDF(wrapperId, filename) {
                 .html2pdf-title h3 { margin: 0 0 5px 0; font-size: 24px; font-weight: bold; }
                 .html2pdf-title p { margin: 0; color: #6c757d; font-size: 14px; }
             </style>
+
+<style>
+/* Elegant fade-out effect for scrollable cards */
+.scroll-fade-container {
+    position: relative;
+}
+.scroll-fade-container::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 40px;
+    background: linear-gradient(to bottom, rgba(248, 249, 250, 0) 0%, rgba(248, 249, 250, 1) 100%);
+    pointer-events: none;
+    border-bottom-right-radius: 0.375rem;
+    border-bottom-left-radius: 0.375rem;
+}
+</style>
+
+
+<style>
+/* Prevent tabs from shifting vertically on mobile */
+.nav-tabs-scrollable {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+}
+.nav-tabs-scrollable::-webkit-scrollbar {
+    height: 4px;
+}
+.nav-tabs-scrollable::-webkit-scrollbar-track {
+    background: transparent;
+}
+.nav-tabs-scrollable::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.1);
+    border-radius: 4px;
+}
+</style>
+
+<style>
+/* Elegant fade-out effect for scrollable cards */
+.scroll-fade-container {
+    position: relative;
+}
+.scroll-fade-container::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 40px;
+    background: linear-gradient(to bottom, rgba(248, 249, 250, 0) 0%, rgba(248, 249, 250, 1) 100%);
+    pointer-events: none;
+    border-bottom-right-radius: 0.375rem;
+    border-bottom-left-radius: 0.375rem;
+}
+</style>
+
+
+
+<style>
+.card-scrollable-content {
+    max-height: 210px;
+    overflow-y: auto;
+    
+    
+    margin-right: -10px; /* Offset to make scrollbar flush */
+    padding-right: 10px;
+    padding-bottom: 20px;
+}
+
+.card-scrollable-content::-webkit-scrollbar {
+    width: 6px;
+}
+.card-scrollable-content::-webkit-scrollbar-track {
+    background: transparent; 
+}
+.card-scrollable-content::-webkit-scrollbar-thumb {
+    background-color: rgba(0,0,0,0.2); 
+    border-radius: 10px;
+}
+.card-scrollable-content::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0,0,0,0.3); 
+}
+</style>
+
+<style>
+/* Elegant fade-out effect for scrollable cards */
+.scroll-fade-container {
+    position: relative;
+}
+.scroll-fade-container::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 40px;
+    background: linear-gradient(to bottom, rgba(248, 249, 250, 0) 0%, rgba(248, 249, 250, 1) 100%);
+    pointer-events: none;
+    border-bottom-right-radius: 0.375rem;
+    border-bottom-left-radius: 0.375rem;
+}
+</style>
+
+
+<style>
+/* Prevent tabs from shifting vertically on mobile */
+.nav-tabs-scrollable {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+}
+.nav-tabs-scrollable::-webkit-scrollbar {
+    height: 4px;
+}
+.nav-tabs-scrollable::-webkit-scrollbar-track {
+    background: transparent;
+}
+.nav-tabs-scrollable::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.1);
+    border-radius: 4px;
+}
+</style>
+
+<style>
+/* Elegant fade-out effect for scrollable cards */
+.scroll-fade-container {
+    position: relative;
+}
+.scroll-fade-container::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 40px;
+    background: linear-gradient(to bottom, rgba(248, 249, 250, 0) 0%, rgba(248, 249, 250, 1) 100%);
+    pointer-events: none;
+    border-bottom-right-radius: 0.375rem;
+    border-bottom-left-radius: 0.375rem;
+}
+</style>
+
+
+
         </head>
         <body>
             <div id="capture-area">
@@ -787,6 +1051,157 @@ function exportToPDF(wrapperId, filename) {
 }
 </style>
 
+<style>
+/* Elegant fade-out effect for scrollable cards */
+.scroll-fade-container {
+    position: relative;
+}
+.scroll-fade-container::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 40px;
+    background: linear-gradient(to bottom, rgba(248, 249, 250, 0) 0%, rgba(248, 249, 250, 1) 100%);
+    pointer-events: none;
+    border-bottom-right-radius: 0.375rem;
+    border-bottom-left-radius: 0.375rem;
+}
+</style>
+
+
+<style>
+/* Prevent tabs from shifting vertically on mobile */
+.nav-tabs-scrollable {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+}
+.nav-tabs-scrollable::-webkit-scrollbar {
+    height: 4px;
+}
+.nav-tabs-scrollable::-webkit-scrollbar-track {
+    background: transparent;
+}
+.nav-tabs-scrollable::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.1);
+    border-radius: 4px;
+}
+</style>
+
+<style>
+/* Elegant fade-out effect for scrollable cards */
+.scroll-fade-container {
+    position: relative;
+}
+.scroll-fade-container::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 40px;
+    background: linear-gradient(to bottom, rgba(248, 249, 250, 0) 0%, rgba(248, 249, 250, 1) 100%);
+    pointer-events: none;
+    border-bottom-right-radius: 0.375rem;
+    border-bottom-left-radius: 0.375rem;
+}
+</style>
+
+
+
+<style>
+.card-scrollable-content {
+    max-height: 210px;
+    overflow-y: auto;
+    
+    
+    margin-right: -10px; /* Offset to make scrollbar flush */
+    padding-right: 10px;
+    padding-bottom: 20px;
+}
+
+.card-scrollable-content::-webkit-scrollbar {
+    width: 6px;
+}
+.card-scrollable-content::-webkit-scrollbar-track {
+    background: transparent; 
+}
+.card-scrollable-content::-webkit-scrollbar-thumb {
+    background-color: rgba(0,0,0,0.2); 
+    border-radius: 10px;
+}
+.card-scrollable-content::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0,0,0,0.3); 
+}
+</style>
+
+<style>
+/* Elegant fade-out effect for scrollable cards */
+.scroll-fade-container {
+    position: relative;
+}
+.scroll-fade-container::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 40px;
+    background: linear-gradient(to bottom, rgba(248, 249, 250, 0) 0%, rgba(248, 249, 250, 1) 100%);
+    pointer-events: none;
+    border-bottom-right-radius: 0.375rem;
+    border-bottom-left-radius: 0.375rem;
+}
+</style>
+
+
+<style>
+/* Prevent tabs from shifting vertically on mobile */
+.nav-tabs-scrollable {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+}
+.nav-tabs-scrollable::-webkit-scrollbar {
+    height: 4px;
+}
+.nav-tabs-scrollable::-webkit-scrollbar-track {
+    background: transparent;
+}
+.nav-tabs-scrollable::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.1);
+    border-radius: 4px;
+}
+</style>
+
+<style>
+/* Elegant fade-out effect for scrollable cards */
+.scroll-fade-container {
+    position: relative;
+}
+.scroll-fade-container::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 40px;
+    background: linear-gradient(to bottom, rgba(248, 249, 250, 0) 0%, rgba(248, 249, 250, 1) 100%);
+    pointer-events: none;
+    border-bottom-right-radius: 0.375rem;
+    border-bottom-left-radius: 0.375rem;
+}
+</style>
+
+
+
+
 <!-- DataTables CSS & JS -->
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css"/>
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css"/>
@@ -851,40 +1266,96 @@ function exportCurrentTabExcel() {
 }
 </script>
 
-{% if selected_course_id and selected_course_id != '' %}
+
+
+{% if current_user.role == 'Coordinator' and course_overview %}
 <!-- Assign CR Modal -->
-<div class="modal fade" id="assignCRModal" tabindex="-1">
+<div class="modal fade" id="assignCrModal" tabindex="-1">
     <div class="modal-dialog">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">Assign CR</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
+        <div class="modal-content">
             <form action="{{ url_for('coordinator.assign_cr') }}" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title">Assign New CR for {{ course_overview.course.name }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
                 <div class="modal-body">
-                    <input type="hidden" name="course_id" value="{{ selected_course_id }}">
+                    <input type="hidden" name="course_id" value="{{ course_overview.course.id }}">
+                    <p class="text-muted small">Only active students in this course can be promoted to CR. Username and password will be automatically generated and sent to them.</p>
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Select Enrolled Student</label>
+                        <label>Select Student</label>
                         <select class="form-select" name="student_id" required>
-                            <option value="" disabled selected>-- Choose Student --</option>
+                            <option value="">Choose a student...</option>
                             {% for student in active_course_students %}
-                            <option value="{{ student.id }}">{{ student.full_name }} (Reg: {{ student.registration_id }})</option>
-                            {% else %}
-                            <option value="" disabled>No active students in this course</option>
+                                <option class="text-capitalize" value="{{ student.id }}">{{ student.reg_id }} - {{ student.full_name }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="alert alert-warning small">
-                        Assigning a student as a CR will automatically generate a secure login for them.
-                    </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Create & Assign CR</button>
+                    <button type="submit" class="btn btn-primary">Assign CR</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Reset CR Password Modal -->
+<div class="modal fade" id="resetCrModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="resetCrForm" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title">Reset CR Password</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label>Select CR</label>
+                        <select class="form-select" id="resetCrSelect" required onchange="document.getElementById('resetCrForm').action = '{{ url_for('coordinator.reset_cr_password', staff_id=0) }}'.replace('0', this.value)">
+                            <option value="">Choose CR...</option>
+                            {% for cr in course_overview.crs %}
+                                <option value="{{ cr.id }}">{{ cr.user.full_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <p class="text-muted small">A new random password will be generated and sent automatically.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-warning">Generate New Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Revoke CR Modal -->
+<div class="modal fade" id="revokeCrModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="revokeCrForm" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title">Revoke CR Access</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label>Select CR</label>
+                        <select class="form-select" id="revokeCrSelect" required onchange="document.getElementById('revokeCrForm').action = '{{ url_for('coordinator.revoke_cr', staff_id=0) }}'.replace('0', this.value)">
+                            <option value="">Choose CR...</option>
+                            {% for cr in course_overview.crs %}
+                                <option value="{{ cr.id }}">{{ cr.user.full_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <p class="text-danger small">This will immediately revoke their dashboard access.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-danger">Revoke Access</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 {% endif %}
+
 {% endblock %}

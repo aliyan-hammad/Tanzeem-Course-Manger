@@ -14,6 +14,9 @@ class User(db.Model, UserMixin):
     full_name = db.Column(db.String(100), nullable=True)
     contact = db.Column(db.String(20), nullable=True)
     status = db.Column(db.String(20), nullable=False, default='Active')
+    cnic = db.Column(db.String(20), nullable=True)
+    email = db.Column(db.String(120), nullable=True)
+    date_of_joining = db.Column(db.Date, nullable=True)
     
     # Payroll fields
     salary_type = db.Column(db.String(20), nullable=True)  # 'Fixed Monthly' or 'Per Session'
@@ -30,8 +33,11 @@ class CourseStaff(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     role_in_course = db.Column(db.String(50), nullable=False)  # Primary Teacher, TA, CR
     assigned_at = db.Column(db.DateTime, default=datetime.utcnow)
+    assigned_teacher_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    subjects_taught = db.Column(db.String(255), nullable=True)
     
-    user = db.relationship('User', backref='course_assignments', lazy=True)
+    user = db.relationship('User', foreign_keys=[user_id], backref='course_assignments', lazy=True)
+    assigned_teacher = db.relationship('User', foreign_keys=[assigned_teacher_id], backref='tas_assigned', lazy=True)
 
 class Course(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -96,6 +102,17 @@ class Expense(db.Model):
 
     deleted_by = db.relationship('User', foreign_keys=[deleted_by_id], backref='expenses_deleted')
 
+class GeneralStaff(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    contact = db.Column(db.String(20), nullable=True)
+    address = db.Column(db.Text, nullable=True)
+    cnic = db.Column(db.String(20), nullable=False)
+    role = db.Column(db.String(50), nullable=False)  # Guard, Sweeper, etc.
+    salary = db.Column(db.Float, nullable=False, default=0.0)
+    payment_method = db.Column(db.String(20), nullable=False, default='Cash')
+    date_of_joining = db.Column(db.Date, nullable=True)
+
 class ClassSession(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     course_id = db.Column(db.Integer, db.ForeignKey('course.id'), nullable=False)
@@ -108,6 +125,17 @@ class ClassSession(db.Model):
     course = db.relationship('Course', backref='sessions', lazy=True)
     created_by = db.relationship('User', foreign_keys=[created_by_id], backref='sessions_created', lazy=True)
     marked_by = db.relationship('User', foreign_keys=[marked_by_id], backref='sessions_marked', lazy=True)
+
+    @property
+    def fallback_teacher_name(self):
+        staff = CourseStaff.query.filter(
+            CourseStaff.course_id == self.course_id,
+            CourseStaff.role_in_course == 'Primary Teacher'
+        ).all()
+        for s in staff:
+            if s.subjects_taught and self.subject_name in s.subjects_taught:
+                return s.user.full_name if s.user.full_name else s.user.username
+        return 'System Admin'
 
 class Attendance(db.Model):
     id = db.Column(db.Integer, primary_key=True)

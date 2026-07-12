@@ -83,6 +83,17 @@ def create_app():
         encoded_text = urllib.parse.quote(text)
         return f"https://wa.me/{clean_phone}?text={encoded_text}"
 
+    @app.template_filter('format_fee_month')
+    def format_fee_month(value):
+        if not value:
+            return value
+        try:
+            from datetime import datetime
+            d = datetime.strptime(value, '%Y-%m')
+            return d.strftime('%B %Y')
+        except:
+            return value
+
     # Initialize Database & Seeds
     with app.app_context():
         db.create_all()
@@ -95,10 +106,17 @@ def create_app():
             db.session.execute(text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS salary_amount FLOAT DEFAULT 0.0'))
             db.session.execute(text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS bank_details VARCHAR(255)'))
             db.session.execute(text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS linked_student_id INTEGER REFERENCES student(id)'))
+            db.session.execute(text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS cnic VARCHAR(20)'))
+            db.session.execute(text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS email VARCHAR(120)'))
+            db.session.execute(text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS date_of_joining DATE'))
             
             # Class Session table migrations
             db.session.execute(text('ALTER TABLE class_session ADD COLUMN IF NOT EXISTS created_by_id INTEGER REFERENCES "user"(id)'))
             db.session.execute(text('ALTER TABLE class_session ADD COLUMN IF NOT EXISTS marked_by_id INTEGER REFERENCES "user"(id)'))
+            
+            # Course Staff table migrations
+            db.session.execute(text('ALTER TABLE course_staff ADD COLUMN IF NOT EXISTS assigned_teacher_id INTEGER REFERENCES "user"(id)'))
+            db.session.execute(text('ALTER TABLE course_staff ADD COLUMN IF NOT EXISTS subjects_taught VARCHAR(255)'))
             
             # Fee Collection table migrations
             db.session.execute(text('ALTER TABLE fee_collection ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE NOT NULL'))
@@ -133,6 +151,36 @@ def create_app():
             pass
         try:
             db.session.execute(text('ALTER TABLE class_session ADD COLUMN marked_by_id INTEGER'))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            pass
+        try:
+            db.session.execute(text('ALTER TABLE "user" ADD COLUMN cnic VARCHAR(20)'))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            pass
+        try:
+            db.session.execute(text('ALTER TABLE "user" ADD COLUMN email VARCHAR(120)'))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            pass
+        try:
+            db.session.execute(text('ALTER TABLE "user" ADD COLUMN date_of_joining DATE'))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            pass
+        try:
+            db.session.execute(text('ALTER TABLE course_staff ADD COLUMN assigned_teacher_id INTEGER'))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            pass
+        try:
+            db.session.execute(text('ALTER TABLE course_staff ADD COLUMN subjects_taught VARCHAR(255)'))
             db.session.commit()
         except Exception:
             db.session.rollback()

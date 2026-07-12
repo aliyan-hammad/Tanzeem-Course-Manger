@@ -57,6 +57,64 @@ def index():
     latest_expenses = []
 
     # Prepare base queries based on role
+
+    course_overview = None
+    if selected_course_id and selected_course_id.isdigit():
+        c_id = int(selected_course_id)
+        sel_course = Course.query.get(c_id)
+        
+        if sel_course:
+            session_query = ClassSession.query.filter_by(course_id=c_id, status='Submitted')
+            if start_date:
+                session_query = session_query.filter(ClassSession.date >= start_date)
+            if end_date:
+                session_query = session_query.filter(ClassSession.date <= end_date)
+            total_sessions = session_query.count()
+            active_staff = CourseStaff.query.filter_by(course_id=c_id).join(User, CourseStaff.user_id == User.id).filter(User.status == 'Active').all()
+            
+            crs = [s for s in active_staff if s.role_in_course == 'CR']
+            tas = [s for s in active_staff if s.role_in_course == 'TA']
+            teachers = [s for s in active_staff if s.role_in_course == 'Teacher']
+            
+            teacher_stats = []
+            for t in teachers:
+                subjects = [s.strip() for s in t.subjects_taught.split(',')] if t.subjects_taught else []
+                sub_counts = {}
+                for sub in subjects:
+                    if sub:
+                        sub_q = ClassSession.query.filter_by(course_id=c_id, subject_name=sub)
+                        if start_date:
+                            sub_q = sub_q.filter(ClassSession.date >= start_date)
+                        if end_date:
+                            sub_q = sub_q.filter(ClassSession.date <= end_date)
+                        count = sub_q.count()
+                        sub_counts[sub] = count
+                        
+                teacher_stats.append({
+                    'name': t.user.full_name,
+                    'subjects': sub_counts
+                })
+                
+            from sqlalchemy import func
+            sb_q = db.session.query(ClassSession.subject_name, func.count(ClassSession.id)).filter(ClassSession.course_id == c_id)
+            if start_date:
+                sb_q = sb_q.filter(ClassSession.date >= start_date)
+            if end_date:
+                sb_q = sb_q.filter(ClassSession.date <= end_date)
+            subject_breakdown_query = sb_q.group_by(ClassSession.subject_name).all()
+            
+            subject_breakdown = {sub: count for sub, count in subject_breakdown_query if sub}
+
+            course_overview = {
+                'course': sel_course,
+                'duration': sel_course.duration,
+                'total_sessions': total_sessions,
+                'subject_breakdown': subject_breakdown,
+                'crs': crs,
+                'teachers': teacher_stats,
+                'tas': tas
+            }
+
     if current_user.role == 'Coordinator':
         assigned_courses = Course.query.filter_by(coordinator_id=current_user.id).all()
         assigned_course_ids = [c.id for c in assigned_courses]
@@ -65,7 +123,7 @@ def index():
         if not assigned_course_ids:
             return render_template('dashboard.html', 
                                    total_active_students=0, hand_cash=0.0, in_account=0.0,
-                                   total_fees=0.0, total_expenses=0.0, net_balance=0.0, students_paid_count=0,
+                                   total_fees=0.0, total_expenses=0.0, net_balance=0.0, students_paid_count=0, current_cycle_month_name='',
                                    latest_fees=[], latest_expenses=[], courses=[],
                                    today_collections=0.0, monthly_collections=0.0,
                                    expenses_added=0.0, pending_requests_count=0,
@@ -81,6 +139,8 @@ def index():
         base_fee_q = FeeCollection.query.join(Student).filter(FeeCollection.is_deleted==False)
         base_exp_q = Expense.query.filter(Expense.is_deleted==False)
         base_stu_q = Student.query.filter(Student.status=='Active')
+    if not selected_course_id and courses_list:
+        selected_course_id = str(courses_list[0].id)
 
     # Apply Course Filter
     if selected_course_id and selected_course_id.isdigit():
@@ -105,19 +165,118 @@ def index():
     hand_cash = sum(f.amount_paid for f in fees if f.payment_method == 'Cash')
     in_account = sum(f.amount_paid for f in fees if f.payment_method == 'Online')
     total_fees = hand_cash + in_account
-    
-    # Calculate students paid count (unique students in the date range)
-    students_paid_count = len(set(f.student_id for f in fees))
-
     expenses = base_exp_q.all()
     total_expenses = sum(e.amount for e in expenses)
     
+    # Calculate students paid count dynamically based on the course start_date
+    students_paid_count = 0
+    if selected_course_id and selected_course_id.isdigit():
+        c_id_for_fee = int(selected_course_id)
+        course_obj = Course.query.get(c_id_for_fee)
+        if course_obj and course_obj.start_date:
+            from dateutil.relativedelta import relativedelta
+            
+            start_d = course_obj.start_date
+            today_d = date.today()
+            
+            # If the course starts in the future, count starts from start_date
+            if today_d < start_d:
+                current_cycle_start = start_d
+            else:
+                # Find the month boundary where start_d + X months <= today_d < start_d + (X+1) months
+                current_cycle_start = start_d
+                while current_cycle_start + relativedelta(months=1) <= today_d:
+                    current_cycle_start += relativedelta(months=1)
+                    
+            current_cycle_end = current_cycle_start + relativedelta(months=1) - timedelta(days=1)
+            
+            # Filter fees to this specific current cycle using the new fee_month logic
+            current_cycle_str = current_cycle_start.strftime('%Y-%m')
+            cycle_fees = [f for f in fees if f.fee_month == current_cycle_str]
+            students_paid_count = len(set(f.student_id for f in cycle_fees))
+            current_cycle_month_name = current_cycle_start.strftime('%B')
+            cycle_collections = sum(f.amount_paid for f in cycle_fees)
+            monthly_collections_override = cycle_collections
+            
+            # Expenses remain time-bound
+            cycle_expenses = sum(e.amount for e in expenses if e.expense_date and current_cycle_start <= e.expense_date.date() <= current_cycle_end)
+            monthly_expenses_override = cycle_expenses
+            
+            # Calculate Next Cycle Advance Payments
+            next_cycle_start = current_cycle_start + relativedelta(months=1)
+            next_cycle_str = next_cycle_start.strftime('%Y-%m')
+            next_cycle_fees = [f for f in fees if f.fee_month == next_cycle_str]
+            next_cycle_students_paid_count = len(set(f.student_id for f in next_cycle_fees))
+            next_cycle_month_name = next_cycle_start.strftime('%B')
+        else:
+            students_paid_count = len(set(f.student_id for f in fees))
+    else:
+        students_paid_count = len(set(f.student_id for f in fees))
+
     net_balance = total_fees - total_expenses
     
     latest_fees = base_fee_q.order_by(FeeCollection.date_collected.desc()).limit(5).all()
     latest_expenses = base_exp_q.order_by(Expense.expense_date.desc()).limit(5).all()
 
     # Role specific logic
+
+    course_overview = None
+    if selected_course_id and selected_course_id.isdigit():
+        c_id = int(selected_course_id)
+        sel_course = Course.query.get(c_id)
+        
+        if sel_course:
+            session_query = ClassSession.query.filter_by(course_id=c_id, status='Submitted')
+            if start_date:
+                session_query = session_query.filter(ClassSession.date >= start_date)
+            if end_date:
+                session_query = session_query.filter(ClassSession.date <= end_date)
+            total_sessions = session_query.count()
+            active_staff = CourseStaff.query.filter_by(course_id=c_id).join(User, CourseStaff.user_id == User.id).filter(User.status == 'Active').all()
+            
+            crs = [s for s in active_staff if s.role_in_course == 'CR']
+            tas = [s for s in active_staff if s.role_in_course == 'TA']
+            teachers = [s for s in active_staff if s.role_in_course == 'Teacher']
+            
+            teacher_stats = []
+            for t in teachers:
+                subjects = [s.strip() for s in t.subjects_taught.split(',')] if t.subjects_taught else []
+                sub_counts = {}
+                for sub in subjects:
+                    if sub:
+                        sub_q = ClassSession.query.filter_by(course_id=c_id, subject_name=sub)
+                        if start_date:
+                            sub_q = sub_q.filter(ClassSession.date >= start_date)
+                        if end_date:
+                            sub_q = sub_q.filter(ClassSession.date <= end_date)
+                        count = sub_q.count()
+                        sub_counts[sub] = count
+                        
+                teacher_stats.append({
+                    'name': t.user.full_name,
+                    'subjects': sub_counts
+                })
+                
+            from sqlalchemy import func
+            sb_q = db.session.query(ClassSession.subject_name, func.count(ClassSession.id)).filter(ClassSession.course_id == c_id)
+            if start_date:
+                sb_q = sb_q.filter(ClassSession.date >= start_date)
+            if end_date:
+                sb_q = sb_q.filter(ClassSession.date <= end_date)
+            subject_breakdown_query = sb_q.group_by(ClassSession.subject_name).all()
+            
+            subject_breakdown = {sub: count for sub, count in subject_breakdown_query if sub}
+
+            course_overview = {
+                'course': sel_course,
+                'duration': sel_course.duration,
+                'total_sessions': total_sessions,
+                'subject_breakdown': subject_breakdown,
+                'crs': crs,
+                'teachers': teacher_stats,
+                'tas': tas
+            }
+
     if current_user.role == 'Coordinator':
         # Unfiltered by date for today/month summary metrics, but filtered by course
         coord_fee_q = FeeCollection.query.join(Student).filter(FeeCollection.is_deleted==False)
@@ -129,6 +288,8 @@ def index():
         all_coord_fees = coord_fee_q.all()
         today_collections = sum([f.amount_paid for f in all_coord_fees if f.date_collected.date() == today_date])
         monthly_collections = sum([f.amount_paid for f in all_coord_fees if f.date_collected.year == current_year and f.date_collected.month == current_month])
+        if 'monthly_collections_override' in locals():
+            monthly_collections = monthly_collections_override
         
         pending_requests_count = ApprovalRequest.query.filter_by(requested_by_id=current_user.id, status='Pending').count()
         
@@ -244,12 +405,16 @@ def index():
                                    total_expenses=total_expenses,
                                    net_balance=net_balance,
                                    students_paid_count=students_paid_count,
+                                   next_cycle_students_paid_count=locals().get('next_cycle_students_paid_count', 0),
+                                   current_cycle_month_name=locals().get('current_cycle_month_name', ''),
+                                   next_cycle_month_name=locals().get('next_cycle_month_name', ''),
                                    latest_fees=latest_fees,
                                    latest_expenses=latest_expenses,
                                    courses=courses_list,
                                    selected_course_id=selected_course_id,
                                    today_collections=today_collections,
                                    monthly_collections=monthly_collections,
+                                   monthly_expenses=locals().get('monthly_expenses_override', 0.0),
                                    expenses_added=total_expenses,
                                    pending_requests_count=pending_requests_count,
                                    start_date_str=start_date_str, end_date_str=end_date_str,
@@ -257,7 +422,7 @@ def index():
                                    today_absentees=today_absentees,
                                    consecutive_absences=consecutive_absences,
                                    low_attendance=low_attendance,
-                                   active_course_staff=active_course_staff, active_course_students=active_course_students)
+                                   active_course_staff=active_course_staff, active_course_students=active_course_students, course_overview=course_overview)
                                    
     else: # Admin
         pending_edit_requests = ApprovalRequest.query.filter_by(request_type='Edit', status='Pending').count()
@@ -319,17 +484,10 @@ def index():
             daily_chart_percentages.append(round(perc, 1))
                 
         
-    active_course_staff = []
-    active_course_students = []
-    if selected_course_id:
-        active_course_staff = CourseStaff.query.filter_by(course_id=selected_course_id).all()
-        active_course_students = Student.query.filter_by(course_id=selected_course_id, status='Active').all()
-        
-    active_course_staff = []
-    active_course_students = []
-    if selected_course_id:
-        active_course_staff = CourseStaff.query.filter_by(course_id=selected_course_id).all()
-        active_course_students = Student.query.filter_by(course_id=selected_course_id, status='Active').all()
+
+
+    active_course_students = Student.query.filter_by(course_id=selected_course_id, status='Active').all() if selected_course_id else []
+
     return render_template('dashboard.html', 
                                total_active_students=total_active_students,
                                hand_cash=hand_cash,
@@ -338,7 +496,12 @@ def index():
                                total_expenses=total_expenses,
                                net_balance=net_balance,
                                students_paid_count=students_paid_count,
+                               next_cycle_students_paid_count=locals().get('next_cycle_students_paid_count', 0),
+                               current_cycle_month_name=locals().get('current_cycle_month_name', ''),
+                               next_cycle_month_name=locals().get('next_cycle_month_name', ''),
                                latest_fees=latest_fees,
+                               cycle_collections=locals().get('monthly_collections_override', 0.0),
+                               cycle_expenses=locals().get('monthly_expenses_override', 0.0),
                                latest_expenses=latest_expenses,
                                courses=courses_list,
                                selected_course_id=selected_course_id,
@@ -350,4 +513,6 @@ def index():
                                monthly_expenses=monthly_expenses_chart,
                                start_date_str=start_date_str, end_date_str=end_date_str,
                                daily_chart_dates=daily_chart_dates,
-                               daily_chart_percentages=daily_chart_percentages)
+                               daily_chart_percentages=daily_chart_percentages,
+                               active_course_students=active_course_students,
+                               course_overview=course_overview)

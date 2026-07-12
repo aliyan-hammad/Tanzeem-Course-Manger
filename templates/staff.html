@@ -3,165 +3,466 @@
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
     <h2 class="mb-0">Staff Management</h2>
-    <button class="btn btn-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#addStaffModal">
-        <i class="bi bi-person-plus"></i> Add Staff
-    </button>
 </div>
 
-<div class="card shadow-sm border-0">
-    <div class="card-body p-0">
-        <div>
-            <table class="table table-hover align-middle mb-0 w-100 nowrap" id="staffTable">
-                <thead class="table-light">
-                    <tr>
-                        <th data-priority="4">ID</th>
-                        <th data-priority="1">Staff Name</th>
-                        <th data-priority="2">Role</th>
-                        <th data-priority="2">Contact</th>
-                        <th data-priority="3">Username (Login)</th>
-                        <th data-priority="3">Managed Courses</th>
-                        <th data-priority="2">Status</th>
-                        <th data-priority="1">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for staff_member in staff %}
-                    <tr>
-                        <td>#{{ staff_member.id }}</td>
-                        <td><strong>{{ staff_member.full_name if staff_member.full_name else '-' }}</strong></td>
-                        <td><span class="badge bg-primary">{{ staff_member.role }}</span></td>
-                        <td>{{ staff_member.contact if staff_member.contact else '-' }}</td>
-                        <td>
-                            {% if staff_member.role == 'General Staff' %}
-                                <span class="text-muted small">N/A (No Login Required)</span>
-                            {% else %}
-                                {{ staff_member.username }}
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if staff_member.managed_courses %}
-                                {% for course in staff_member.managed_courses %}
-                                <span class="badge bg-light text-dark border me-1">{{ course.name }}</span>
-                                {% endfor %}
-                            {% else %}
-                                <span class="text-muted small">None</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <span class="badge {% if staff_member.status == 'Active' %}bg-success{% else %}bg-danger{% endif %}">
-                                {{ staff_member.status }}
-                            </span>
-                        </td>
-                        <td>
-                            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editStaffModal{{ staff_member.id }}">
-                                <i class="bi bi-pencil"></i>
-                            </button>
-                            <form action="{{ url_for('admin.delete_staff', id=staff_member.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to remove this staff_member? This will dissociate them from their courses.');">
-                                <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
-                            </form>
-                        </td>
-                    </tr>
+<!-- Nav tabs -->
+<ul class="nav nav-tabs mb-4" id="staffTabs" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" id="coord-tab" data-bs-toggle="tab" data-bs-target="#coord-pane" type="button" role="tab">Coordinators</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="teacher-tab" data-bs-toggle="tab" data-bs-target="#teacher-pane" type="button" role="tab">Teachers & TAs</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="gs-tab" data-bs-toggle="tab" data-bs-target="#gs-pane" type="button" role="tab">General Staff</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="cr-tab" data-bs-toggle="tab" data-bs-target="#cr-pane" type="button" role="tab">Class Reps (CRs)</button>
+  </li>
+</ul>
 
-                    <!-- Edit Staff Modal -->
-                    <div class="modal fade" id="editStaffModal{{ staff_member.id }}" tabindex="-1" aria-labelledby="editStaffModalLabel{{ staff_member.id }}" aria-hidden="true">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title" id="editStaffModalLabel{{ staff_member.id }}">Edit Staff Details</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                </div>
-                                <form action="{{ url_for('admin.edit_staff', id=staff_member.id) }}" method="POST">
-                                    <div class="modal-body">
-                                        <div class="mb-3">
-                                            <label for="full_name{{ staff_member.id }}" class="form-label">Staff Name</label>
-                                            <input type="text" class="form-control" id="full_name{{ staff_member.id }}" name="full_name" value="{{ staff_member.full_name if staff_member.full_name else '' }}" required>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="contact{{ staff_member.id }}" class="form-label">Contact Number</label>
-                                            <input type="text" class="form-control" id="contact{{ staff_member.id }}" name="contact" value="{{ staff_member.contact if staff_member.contact else '' }}" required pattern="[0-9]{11}" maxlength="11" minlength="11" title="Contact number must be exactly 11 digits (numbers only)">
-                                        </div>
-                                        <div class="mb-3 auth-fields{{ staff_member.id }}" {% if staff_member.role == 'General Staff' %}style="display: none;"{% endif %}>
-                                            <label for="password{{ staff_member.id }}" class="form-label">Update Password (Leave blank to keep current)</label>
-                                            <input type="password" class="form-control" id="password{{ staff_member.id }}" name="password" placeholder="New password">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="role{{ staff_member.id }}" class="form-label">System Role</label>
-                                            <select class="form-select role-select" data-target=".auth-fields{{ staff_member.id }}" id="role{{ staff_member.id }}" name="role" required>
-                                                <option value="Coordinator" {% if staff_member.role == 'Coordinator' %}selected{% endif %}>Coordinator</option>
-                                                <option value="Teacher" {% if staff_member.role == 'Teacher' %}selected{% endif %}>Teacher</option>
-                                                <option value="TA" {% if staff_member.role == 'TA' %}selected{% endif %}>TA</option>
-                                                <option value="General Staff" {% if staff_member.role == 'General Staff' %}selected{% endif %}>General Staff</option>
-                                            </select>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="status{{ staff_member.id }}" class="form-label">Authorization Status</label>
-                                            <select class="form-select" id="status{{ staff_member.id }}" name="status" required>
-                                                <option value="Active" {% if staff_member.status == 'Active' %}selected{% endif %}>Active (Authorized)</option>
-                                                <option value="Inactive" {% if staff_member.status == 'Inactive' %}selected{% endif %}>Inactive (De-authorized)</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                        <button type="submit" class="btn btn-primary">Update Details</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
+<!-- Tab panes -->
+<div class="tab-content" id="staffTabsContent">
+    
+  <!-- Coordinators Pane -->
+  <div class="tab-pane fade show active" id="coord-pane" role="tabpanel" tabindex="0">
+      <div class="d-flex justify-content-end mb-3">
+          <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCoordModal"><i class="bi bi-person-plus"></i> Add Coordinator</button>
+      </div>
+      <table class="table table-hover align-middle datatable w-100 nowrap">
+          <thead class="table-light">
+              <tr>
+                  <th data-priority="1">Name</th>
+                  <th data-priority="3">Course Managed</th>
+                  <th data-priority="2">Contact</th>
+                  <th data-priority="2">Status</th>
+                  <th data-priority="1">Actions</th>
+              </tr>
+          </thead>
+          <tbody>
+              {% for coord in coordinators %}
+              <tr>
+                  <td>{{ coord.full_name }}</td>
+                  <td>
+                      {% if coord.managed_courses %}
+                          {% for course in coord.managed_courses %}
+                          <span class="badge bg-info text-dark mb-1">{{ course.name }}</span><br>
+                          {% endfor %}
+                      {% else %}
+                          <span class="text-muted small">None</span>
+                      {% endif %}
+                  </td>
+                  <td>{{ coord.contact }}</td>
+                  <td><span class="badge bg-{{ 'success' if coord.status == 'Active' else 'danger' }}">{{ coord.status }}</span></td>
+                  <td>
+                      <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editCoordModal{{ coord.id }}"><i class="bi bi-pencil"></i></button>
+                      <form action="{{ url_for('admin.delete_staff', id=coord.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this coordinator?');">
+                          <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                      </form>
+                  </td>
+              </tr>
+              
+              <!-- Edit Coordinator Modal -->
+              <div class="modal fade" id="editCoordModal{{ coord.id }}" tabindex="-1" aria-hidden="true">
+                  <div class="modal-dialog">
+                      <form action="{{ url_for('admin.edit_staff', id=coord.id) }}" method="POST">
+                          <div class="modal-content">
+                              <div class="modal-header"><h5 class="modal-title">Edit Coordinator</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                              <div class="modal-body">
+                                  <div class="mb-3"><label>Full Name</label><input type="text" name="full_name" class="form-control" value="{{ coord.full_name }}" required></div>
+                                  <div class="mb-3"><label>Contact</label><input type="text" name="contact" class="form-control" value="{{ coord.contact }}"></div>
+                                  <div class="mb-3"><label>CNIC</label><input type="text" name="cnic" class="form-control" value="{{ coord.cnic or '' }}"></div>
+                                  <div class="mb-3"><label>Email</label><input type="email" name="email" class="form-control" value="{{ coord.email or '' }}"></div>
+                                  <div class="mb-3"><label>Date of Joining</label><input type="date" name="date_of_joining" class="form-control" value="{{ coord.date_of_joining.strftime('%Y-%m-%d') if coord.date_of_joining else '' }}" required></div>
+                                  <div class="mb-3"><label>Salary (Monthly)</label><input type="number" name="salary_amount" class="form-control" value="{{ coord.salary_amount or 0 }}"></div>
+                                  <input type="hidden" name="salary_type" value="Fixed Monthly">
+                                  
+                                  <div class="mb-3"><label>Status</label>
+                                      <select name="status" class="form-select">
+                                          <option value="Active" {% if coord.status == 'Active' %}selected{% endif %}>Active</option>
+                                          <option value="Inactive" {% if coord.status == 'Inactive' %}selected{% endif %}>Inactive</option>
+                                      </select>
+                                  </div>
+                                  <div class="mb-3"><label>Update Password (Optional)</label><input type="password" name="password" class="form-control" placeholder="Leave blank to keep current"></div>
+                              </div>
+                              <div class="modal-footer"><button type="submit" class="btn btn-primary">Update Details</button></div>
+                          </div>
+                      </form>
+                  </div>
+              </div>
+              {% endfor %}
+          </tbody>
+      </table>
+  </div>
+  
+  <!-- Teachers & TAs Pane -->
+  <div class="tab-pane fade" id="teacher-pane" role="tabpanel" tabindex="0">
+      <div class="d-flex justify-content-end mb-3">
+          <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTeacherModal"><i class="bi bi-person-plus"></i> Add Teacher/TA</button>
+      </div>
+      <table class="table table-hover align-middle datatable w-100 nowrap">
+          <thead class="table-light">
+              <tr>
+                  <th data-priority="2">Role</th>
+                  <th data-priority="1">Name</th>
+                  <th data-priority="3">Assigned Course</th>
+                  <th data-priority="4">Subjects Taught</th>
+                  <th data-priority="3">Contact</th>
+                  <th data-priority="4">Salary Type</th>
+                  <th data-priority="2">Status</th>
+                  <th data-priority="1">Actions</th>
+              </tr>
+          </thead>
+          <tbody>
+              {% for staff in teachers_tas %}
+              <tr>
+                  <td><span class="badge bg-primary">{{ staff.role }}</span></td>
+                  <td>{{ staff.full_name }}</td>
+                  <td>
+                      {% if staff.course_assignments %}
+                          {{ staff.course_assignments[0].course.name }}
+                      {% else %}
+                          <span class="text-muted">Unassigned</span>
+                      {% endif %}
+                  </td>
+                  <td>
+                      {% if staff.course_assignments and staff.course_assignments[0].subjects_taught %}
+                          {{ staff.course_assignments[0].subjects_taught }}
+                      {% elif staff.role == 'TA' and staff.course_assignments and staff.course_assignments[0].assigned_teacher %}
+                          TA for: {{ staff.course_assignments[0].assigned_teacher.full_name }}
+                      {% else %}
+                          -
+                      {% endif %}
+                  </td>
+                  <td>{{ staff.contact }}</td>
+                  <td>{{ staff.salary_type }} (Rs. {{ staff.salary_amount }})</td>
+                  <td><span class="badge bg-{{ 'success' if staff.status == 'Active' else 'danger' }}">{{ staff.status }}</span></td>
+                  <td>
+                      <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editTeacherModal{{ staff.id }}"><i class="bi bi-pencil"></i></button>
+                      <form action="{{ url_for('admin.delete_staff', id=staff.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this staff member?');">
+                          <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                      </form>
+                  </td>
+              </tr>
+              
+              <!-- Edit Teacher/TA Modal -->
+              <div class="modal fade" id="editTeacherModal{{ staff.id }}" tabindex="-1" aria-hidden="true">
+                  <div class="modal-dialog">
+                      <form action="{{ url_for('admin.edit_staff', id=staff.id) }}" method="POST">
+                          <div class="modal-content">
+                              <div class="modal-header"><h5 class="modal-title">Edit {{ staff.role }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                              <div class="modal-body">
+                                  <input type="hidden" name="role" value="{{ staff.role }}">
+                                  
+                                  <div class="mb-3"><label>Full Name</label><input type="text" name="full_name" class="form-control" value="{{ staff.full_name }}" required></div>
+                                  <div class="mb-3"><label>Contact</label><input type="text" name="contact" class="form-control" value="{{ staff.contact }}"></div>
+                                  <div class="mb-3"><label>CNIC</label><input type="text" name="cnic" class="form-control" value="{{ staff.cnic or '' }}"></div>
+                                  <div class="mb-3"><label>Email</label><input type="email" name="email" class="form-control" value="{{ staff.email or '' }}"></div>
+                                  <div class="mb-3"><label>Date of Joining</label><input type="date" name="date_of_joining" class="form-control" value="{{ staff.date_of_joining.strftime('%Y-%m-%d') if staff.date_of_joining else '' }}" required></div>
+                                  <div class="mb-3"><label>Bank Details (Bank, Account Title, IBAN)</label><input type="text" name="bank_details" class="form-control" value="{{ staff.bank_details or '' }}"></div>
+                                  
+                                  <div class="mb-3">
+                                      <label>Salary Type</label>
+                                      <select name="salary_type" class="form-select">
+                                          <option value="Per Session" {% if staff.salary_type == 'Per Session' %}selected{% endif %}>Per Session</option>
+                                          <option value="Fixed Monthly" {% if staff.salary_type == 'Fixed Monthly' %}selected{% endif %}>Fixed Monthly</option>
+                                      </select>
+                                  </div>
+                                  <div class="mb-3"><label>Salary Amount</label><input type="number" name="salary_amount" class="form-control" value="{{ staff.salary_amount or 0 }}"></div>
+
+                                  <div class="mb-3">
+                                      <label>Assign to Course</label>
+                                      <select name="course_id" class="form-select">
+                                          <option value="">Unassigned</option>
+                                          {% set assigned_course_id = staff.course_assignments[0].course_id if staff.course_assignments else None %}
+                                          {% for c in active_courses %}
+                                          <option value="{{ c.id }}" {% if assigned_course_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+                                          {% endfor %}
+                                      </select>
+                                  </div>
+                                  
+                                  {% if staff.role == 'Teacher' %}
+                                  <div class="mb-3">
+                                      <label>Subjects Taught</label>
+                                      <input type="hidden" name="subjects_taught" class="hidden-subjects" value="{{ staff.course_assignments[0].subjects_taught if staff.course_assignments else '' }}">
+                                      <div class="subjects-checkboxes border rounded p-2" data-selected="{{ staff.course_assignments[0].subjects_taught if staff.course_assignments else '' }}" style="max-height: 150px; overflow-y: auto;"></div>
+                                  </div>
+                                  {% elif staff.role == 'TA' %}
+                                  <div class="mb-3">
+                                      <label>Assigned to Teacher</label>
+                                      <select name="assigned_teacher_id" class="form-select">
+                                          <option value="">Select a Teacher...</option>
+                                          {% set assigned_t_id = staff.course_assignments[0].assigned_teacher_id if staff.course_assignments else None %}
+                                          {% for t in active_teachers %}
+                                          <option value="{{ t.id }}" {% if assigned_t_id == t.id %}selected{% endif %}>{{ t.full_name }}</option>
+                                          {% endfor %}
+                                      </select>
+                                  </div>
+                                  {% endif %}
+                                  
+                                  <div class="mb-3"><label>Status</label>
+                                      <select name="status" class="form-select">
+                                          <option value="Active" {% if staff.status == 'Active' %}selected{% endif %}>Active</option>
+                                          <option value="Inactive" {% if staff.status == 'Inactive' %}selected{% endif %}>Inactive</option>
+                                      </select>
+                                  </div>
+                                  <div class="mb-3"><label>Update Password (Optional)</label><input type="password" name="password" class="form-control" placeholder="Leave blank to keep current"></div>
+                              </div>
+                              <div class="modal-footer"><button type="submit" class="btn btn-primary">Update Details</button></div>
+                          </div>
+                      </form>
+                  </div>
+              </div>
+              {% endfor %}
+          </tbody>
+      </table>
+  </div>
+
+  <!-- General Staff Pane -->
+  <div class="tab-pane fade" id="gs-pane" role="tabpanel" tabindex="0">
+      <div class="d-flex justify-content-end mb-3">
+          <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addGSModal"><i class="bi bi-person-plus"></i> Add General Staff</button>
+      </div>
+      <table class="table table-hover align-middle datatable w-100 nowrap">
+          <thead class="table-light">
+              <tr>
+                  <th data-priority="2">Role</th>
+                  <th data-priority="1">Name</th>
+                  <th data-priority="3">CNIC</th>
+                  <th data-priority="2">Contact</th>
+                  <th data-priority="4">Salary</th>
+                  <th data-priority="4">Joined</th>
+                  <th data-priority="1">Actions</th>
+              </tr>
+          </thead>
+          <tbody>
+              {% for gs in general_staff %}
+              <tr>
+                  <td><span class="badge bg-secondary">{{ gs.role }}</span></td>
+                  <td>{{ gs.name }}</td>
+                  <td>{{ gs.cnic }}</td>
+                  <td>{{ gs.contact }}</td>
+                  <td>Rs. {{ gs.salary }} ({{ gs.payment_method }})</td>
+                  <td>{{ gs.date_of_joining }}</td>
+                  <td>
+                      <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editGSModal{{ gs.id }}"><i class="bi bi-pencil"></i></button>
+                      <form action="{{ url_for('admin.delete_gs', id=gs.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this staff member?');">
+                          <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                      </form>
+                  </td>
+              </tr>
+              
+              <!-- Edit GS Modal -->
+              <div class="modal fade" id="editGSModal{{ gs.id }}" tabindex="-1" aria-hidden="true">
+                  <div class="modal-dialog">
+                      <form action="{{ url_for('admin.edit_gs', id=gs.id) }}" method="POST">
+                          <div class="modal-content">
+                              <div class="modal-header"><h5 class="modal-title">Edit General Staff</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                              <div class="modal-body">
+                                  <div class="mb-3"><label>Full Name</label><input type="text" name="full_name" class="form-control" value="{{ gs.name }}" required></div>
+                                  <div class="mb-3"><label>Contact</label><input type="text" name="contact" class="form-control" value="{{ gs.contact }}" required></div>
+                                  <div class="mb-3"><label>CNIC</label><input type="text" name="cnic" class="form-control" value="{{ gs.cnic }}" required></div>
+                                  
+                                  <div class="mb-3">
+                                      <label>Role</label>
+                                      {% set standard_roles = ['Guard', 'Tea boy', 'Sweeper', 'Chief'] %}
+                                      <select name="role" class="form-select gs-edit-role-select" data-target="#gs-edit-custom-role{{ gs.id }}" required>
+                                          {% for sr in standard_roles %}
+                                          <option value="{{ sr }}" {% if gs.role == sr %}selected{% endif %}>{{ sr }}</option>
+                                          {% endfor %}
+                                          <option value="Other" {% if gs.role not in standard_roles %}selected{% endif %}>Other...</option>
+                                      </select>
+                                  </div>
+                                  <div class="mb-3 {% if gs.role in standard_roles %}d-none{% endif %}" id="gs-edit-custom-role{{ gs.id }}">
+                                      <label>Specify Role</label><input type="text" name="custom_role" class="form-control" value="{% if gs.role not in standard_roles %}{{ gs.role }}{% endif %}">
+                                  </div>
+                                  
+                                  <div class="mb-3"><label>Salary (Monthly)</label><input type="number" name="salary" class="form-control" value="{{ gs.salary }}" required></div>
+                                  <div class="mb-3">
+                                      <label>Payment Method</label>
+                                      <select name="payment_method" class="form-select">
+                                          <option value="Cash" {% if gs.payment_method == 'Cash' %}selected{% endif %}>Cash</option>
+                                          <option value="Bank Transfer" {% if gs.payment_method == 'Bank Transfer' %}selected{% endif %}>Bank Transfer</option>
+                                      </select>
+                                  </div>
+                                  <div class="mb-3"><label>Date of Joining</label><input type="date" name="date_of_joining" class="form-control" value="{{ gs.date_of_joining.strftime('%Y-%m-%d') if gs.date_of_joining else '' }}"></div>
+                              </div>
+                              <div class="modal-footer"><button type="submit" class="btn btn-primary">Update Details</button></div>
+                          </div>
+                      </form>
+                  </div>
+              </div>
+              {% endfor %}
+          </tbody>
+      </table>
+  </div>
+
+  <!-- CRs Pane (Read-Only) -->
+  <div class="tab-pane fade" id="cr-pane" role="tabpanel" tabindex="0">
+      <table class="table table-hover align-middle datatable w-100 nowrap">
+          <thead class="table-light">
+              <tr>
+                  <th data-priority="2">Course Managed</th>
+                  <th data-priority="1">Name</th>
+                  <th data-priority="3">Registration ID</th>
+                  <th data-priority="3">Contact</th>
+                  <th data-priority="2">Status</th>
+              </tr>
+          </thead>
+          <tbody>
+              {% for cr in crs %}
+              <tr>
+                  <td>
+                      {% if cr.course_assignments %}
+                          <span class="badge bg-info">{{ cr.course_assignments[0].course.name }}</span>
+                      {% else %}
+                          <span class="text-muted">Unassigned</span>
+                      {% endif %}
+                  </td>
+                  <td>{{ cr.full_name }}</td>
+                  <td>{{ cr.linked_student.registration_id if cr.linked_student else '-' }}</td>
+                  <td>{{ cr.contact }}</td>
+                  <td><span class="badge bg-{{ 'success' if cr.status == 'Active' else 'danger' }}">{{ cr.status }}</span></td>
+              </tr>
+              {% endfor %}
+          </tbody>
+      </table>
+  </div>
 </div>
 
-<!-- Add Staff Modal -->
-<div class="modal fade" id="addStaffModal" tabindex="-1" aria-labelledby="addStaffModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="addStaffModalLabel">Add New Staff</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form action="{{ url_for('admin.staff') }}" method="POST">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="full_name" class="form-label">Staff Name</label>
-                        <input type="text" class="form-control" id="full_name" name="full_name" placeholder="Enter Full Name" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="contact" class="form-label">Contact Number (11 digits)</label>
-                        <input type="text" class="form-control" id="contact" name="contact" placeholder="e.g. 03001234567" required pattern="[0-9]{11}" maxlength="11" minlength="11" title="Contact number must be exactly 11 digits (numbers only)">
-                    </div>
-                    <div class="mb-3">
-                        <label for="role" class="form-label">System Role</label>
-                        <select class="form-select role-select" data-target=".add-auth-fields" id="role" name="role" required>
-                            <option value="Coordinator">Coordinator</option>
-                            <option value="Teacher">Teacher</option>
-                            <option value="TA">TA</option>
-                            <option value="General Staff" selected>General Staff</option>
-                        </select>
-                    </div>
-                    <div class="add-auth-fields" style="display: none;">
-                        <div class="mb-3">
-                            <label for="username" class="form-label">Login Username</label>
-                            <input type="text" class="form-control auth-input" id="username" name="username" placeholder="Enter login username">
-                        </div>
-                        <div class="mb-3">
-                            <label for="password" class="form-label">Password</label>
-                            <input type="password" class="form-control auth-input" id="password" name="password" placeholder="Enter temporary password">
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Account</button>
-                </div>
-            </form>
-        </div>
-    </div>
+<!-- MODALS FOR ADDING -->
+
+<!-- Coordinator Modal -->
+<div class="modal fade" id="addCoordModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+      <form action="{{ url_for('admin.staff') }}" method="POST">
+          <input type="hidden" name="form_type" value="coordinator">
+          <div class="modal-content">
+              <div class="modal-header"><h5 class="modal-title">Add Coordinator</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+              <div class="modal-body">
+                  <div class="mb-3"><label>Full Name</label><input type="text" name="full_name" class="form-control" required></div>
+                  <div class="mb-3"><label>Username</label><input type="text" name="username" class="form-control" required></div>
+                  <div class="mb-3"><label>Password</label><input type="password" name="password" class="form-control" required></div>
+                  <div class="mb-3"><label>Contact</label><input type="text" name="contact" class="form-control" required></div>
+                  <div class="mb-3"><label>CNIC</label><input type="text" name="cnic" class="form-control"></div>
+                  <div class="mb-3"><label>Email</label><input type="email" name="email" class="form-control"></div>
+                  <div class="mb-3"><label>Date of Joining</label><input type="date" name="date_of_joining" class="form-control" required></div>
+                  <div class="mb-3"><label>Salary (Monthly)</label><input type="number" name="salary_amount" class="form-control" value="0"></div>
+                  <input type="hidden" name="salary_type" value="Fixed Monthly">
+              </div>
+              <div class="modal-footer"><button type="submit" class="btn btn-primary">Save</button></div>
+          </div>
+      </form>
+  </div>
 </div>
+
+<!-- Teacher/TA Modal -->
+<div class="modal fade" id="addTeacherModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+      <form action="{{ url_for('admin.staff') }}" method="POST">
+          <div class="modal-content">
+              <div class="modal-header"><h5 class="modal-title">Add Teacher / TA</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+              <div class="modal-body">
+                  <div class="mb-3">
+                      <label>Role</label>
+                      <select name="form_type" id="teacher-role-select" class="form-select" required>
+                          <option value="teacher">Teacher</option>
+                          <option value="ta">Teaching Assistant (TA)</option>
+                      </select>
+                  </div>
+                  
+                  <div class="mb-3">
+                      <label>Assign to Course</label>
+                      <select name="course_id" class="form-select" required>
+                          <option value="" disabled selected>Select an active course...</option>
+                          {% for c in active_courses %}
+                          <option value="{{ c.id }}">{{ c.name }}</option>
+                          {% endfor %}
+                      </select>
+                  </div>
+                  
+                  <div class="mb-3" id="subjects-container">
+                      <label>Subjects Taught</label>
+                      <input type="hidden" name="subjects_taught" class="hidden-subjects">
+                      <div class="subjects-checkboxes border rounded p-2" data-selected="" style="max-height: 150px; overflow-y: auto;">
+                          <div class="text-muted small">Select a course first to view curriculum.</div>
+                      </div>
+                  </div>
+                  
+                  <div class="mb-3 d-none" id="assigned-teacher-container">
+                      <label>Assigned to Teacher (For TA)</label>
+                      <select name="assigned_teacher_id" class="form-select">
+                          <option value="" disabled selected>Select a Teacher...</option>
+                          {% for t in active_teachers %}
+                          <option value="{{ t.id }}">{{ t.full_name }}</option>
+                          {% endfor %}
+                      </select>
+                  </div>
+                  
+                  <div class="mb-3"><label>Full Name</label><input type="text" name="full_name" class="form-control" required></div>
+                  <div class="mb-3"><label>Username</label><input type="text" name="username" class="form-control" required></div>
+                  <div class="mb-3"><label>Password</label><input type="password" name="password" class="form-control" required></div>
+                  <div class="mb-3"><label>Contact</label><input type="text" name="contact" class="form-control" required></div>
+                  <div class="mb-3"><label>CNIC</label><input type="text" name="cnic" class="form-control"></div>
+                  <div class="mb-3"><label>Email</label><input type="email" name="email" class="form-control"></div>
+                  <div class="mb-3"><label>Date of Joining</label><input type="date" name="date_of_joining" class="form-control" required></div>
+                  <div class="mb-3"><label>Bank Details (Bank, Account Title, IBAN)</label><input type="text" name="bank_details" class="form-control"></div>
+                  
+                  <div class="mb-3">
+                      <label>Salary Type</label>
+                      <select name="salary_type" class="form-select">
+                          <option value="Per Session">Per Session</option>
+                          <option value="Fixed Monthly">Fixed Monthly</option>
+                      </select>
+                  </div>
+                  <div class="mb-3"><label>Salary Amount</label><input type="number" name="salary_amount" class="form-control" value="0"></div>
+              </div>
+              <div class="modal-footer"><button type="submit" class="btn btn-primary">Save</button></div>
+          </div>
+      </form>
+  </div>
+</div>
+
+<!-- General Staff Modal -->
+<div class="modal fade" id="addGSModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+      <form action="{{ url_for('admin.staff') }}" method="POST">
+          <input type="hidden" name="form_type" value="general_staff">
+          <div class="modal-content">
+              <div class="modal-header"><h5 class="modal-title">Add General Staff</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+              <div class="modal-body">
+                  <div class="mb-3"><label>Full Name</label><input type="text" name="full_name" class="form-control" required></div>
+                  <div class="mb-3"><label>Contact</label><input type="text" name="contact" class="form-control" required></div>
+                  <div class="mb-3"><label>CNIC</label><input type="text" name="cnic" class="form-control" required></div>
+                  <div class="mb-3">
+                      <label>Role</label>
+                      <select name="role" id="gs-role-select" class="form-select" required>
+                          <option value="Guard">Guard</option>
+                          <option value="Tea boy">Tea boy</option>
+                          <option value="Sweeper">Sweeper</option>
+                          <option value="Chief">Chief</option>
+                          <option value="Other">Other...</option>
+                      </select>
+                  </div>
+                  <div class="mb-3 d-none" id="gs-custom-role">
+                      <label>Specify Role</label><input type="text" name="custom_role" class="form-control">
+                  </div>
+                  <div class="mb-3"><label>Salary (Monthly)</label><input type="number" name="salary" class="form-control" value="0" required></div>
+                  <div class="mb-3">
+                      <label>Payment Method</label>
+                      <select name="payment_method" class="form-select">
+                          <option value="Cash">Cash</option>
+                          <option value="Bank Transfer">Bank Transfer</option>
+                      </select>
+                  </div>
+                  <div class="mb-3"><label>Date of Joining</label><input type="date" name="date_of_joining" class="form-control"></div>
+              </div>
+              <div class="modal-footer"><button type="submit" class="btn btn-primary">Save</button></div>
+          </div>
+      </form>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -172,38 +473,141 @@
 <script type="text/javascript" src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 <script type="text/javascript" src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
 <script type="text/javascript" src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
+
+
 <script>
 $(document).ready(function() {
-    $('#staffTable').DataTable({
-        responsive: true,
-        pageLength: 10,
-        lengthChange: false,
-        order: [[0, 'desc']],
-        language: {
-            search: "Search Staff:"
-        },
-        dom: "<'row px-3 pt-3'<'col-sm-12 col-md-6'><'col-sm-12 col-md-6'f>>" +
-             "<'row'<'col-sm-12'tr>>" +
-             "<'row px-3 pb-3 pt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
-    });
 
-    // Handle Role Select to toggle Auth Fields
-    $('.role-select').on('change', function() {
-        const targetClass = $(this).data('target');
-        const authFields = $(targetClass);
-        const authInputs = authFields.find('.auth-input');
+    // Custom Form Validation for Subjects Taught
+    $('form').on('submit', function(e) {
+        var $form = $(this);
+        var role = $form.find('select[name="form_type"]').val() || $form.find('input[name="role"]').val();
         
-        if ($(this).val() === 'General Staff') {
-            authFields.slideUp();
-            authInputs.prop('required', false);
-        } else {
-            authFields.slideDown();
-            authInputs.prop('required', true);
+        if (role === 'teacher' || role === 'Teacher') {
+            var $hiddenSubjects = $form.find('.hidden-subjects');
+            if ($hiddenSubjects.length > 0 && $hiddenSubjects.val().trim() === '') {
+                e.preventDefault();
+                alert('Please select at least one subject for the Teacher.');
+                return false;
+            }
         }
     });
-    
-    // Trigger change on load for default state
-    $('#role').trigger('change');
+
+    var table = $('.datatable').DataTable({
+        responsive: true,
+        pageLength: 10,
+        lengthChange: false
+    });
+
+    // Fix DataTables Responsive in Bootstrap Tabs & Maintain Tab Session
+    $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+        $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust().responsive.recalc();
+        localStorage.setItem('activeStaffTab', $(e.target).attr('id'));
+    });
+    var activeTab = localStorage.getItem('activeStaffTab');
+    if(activeTab){
+        $('#' + activeTab).tab('show');
+    }
+
+    const courseSubjects = {
+        {% for c in active_courses %}
+            "{{ c.id }}": {{ c.subjects | default('[]', true) | safe }},
+        {% endfor %}
+    };
+
+    function updateHiddenSubjects($container) {
+        var selected = [];
+        $container.find('input[type="checkbox"]:checked').each(function() {
+            selected.push($(this).val());
+        });
+        $container.siblings('.hidden-subjects').val(selected.join(', '));
+    }
+
+    function updateSubjectsCheckboxes(courseSelect, containerSelector, selectedSubjects) {
+        var courseId = $(courseSelect).val();
+        var subjects = courseSubjects[courseId] || [];
+        var $container = $(containerSelector);
+        $container.empty();
+        
+        var selectedArr = selectedSubjects ? selectedSubjects.split(',').map(s => s.trim()) : [];
+        
+        if (subjects.length === 0) {
+            $container.append('<div class="text-muted small">No curriculum found for this course.</div>');
+        } else {
+            subjects.forEach(function(sub, idx) {
+                var isChecked = selectedArr.includes(sub) ? 'checked' : '';
+                var safeId = 'chk_' + courseId + '_' + idx + Math.random().toString(36).substring(7);
+                var html = `
+                    <div class="form-check mb-1">
+                        <input class="form-check-input subject-chk" type="checkbox" value="${sub}" id="${safeId}" ${isChecked}>
+                        <label class="form-check-label" for="${safeId}">${sub}</label>
+                    </div>
+                `;
+                $container.append(html);
+            });
+        }
+        
+        // Initial sync to hidden input
+        updateHiddenSubjects($container);
+        
+        // Bind change event to checkboxes
+        $container.find('.subject-chk').on('change', function() {
+            updateHiddenSubjects($container);
+        });
+    }
+
+    // Add Modal Course Change
+    $('#addTeacherModal select[name="course_id"]').on('change', function() {
+        updateSubjectsCheckboxes(this, '#addTeacherModal .subjects-checkboxes', '');
+    });
+
+    // Edit Modal Course Change
+    $('[id^=editTeacherModal]').each(function() {
+        var modal = this;
+        var $courseSelect = $(modal).find('select[name="course_id"]');
+        var $subjectsContainer = $(modal).find('.subjects-checkboxes');
+        var currentSubjects = $subjectsContainer.data('selected') || '';
+        
+        if ($courseSelect.val()) {
+            updateSubjectsCheckboxes($courseSelect[0], $subjectsContainer[0], currentSubjects);
+        }
+        
+        $courseSelect.on('change', function() {
+            updateSubjectsCheckboxes(this, $subjectsContainer[0], '');
+        });
+    });
+$('#gs-role-select').on('change', function() {
+        if ($(this).val() === 'Other') {
+            $('#gs-custom-role').removeClass('d-none');
+            $('#gs-custom-role input').prop('required', true);
+        } else {
+            $('#gs-custom-role').addClass('d-none');
+            $('#gs-custom-role input').prop('required', false);
+        }
+    });
+
+    $('.gs-edit-role-select').on('change', function() {
+        var targetId = $(this).data('target');
+        if ($(this).val() === 'Other') {
+            $(targetId).removeClass('d-none');
+            $(targetId + ' input').prop('required', true);
+        } else {
+            $(targetId).addClass('d-none');
+            $(targetId + ' input').prop('required', false);
+        }
+    });
+
+    $('#teacher-role-select').on('change', function() {
+        if ($(this).val() === 'ta') {
+            $('#subjects-container').addClass('d-none');
+            $('#assigned-teacher-container').removeClass('d-none');
+            $('#assigned-teacher-container select').prop('required', true);
+        } else {
+            $('#subjects-container').removeClass('d-none');
+            $('#assigned-teacher-container').addClass('d-none');
+            $('#assigned-teacher-container select').prop('required', false);
+        }
+    });
 });
 </script>
 {% endblock %}

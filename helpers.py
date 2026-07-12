@@ -36,7 +36,7 @@ def calculate_attendance(student_id, course_id, subject_name=None, start_date=No
     and how many times the student was explicitly marked 'Present' (numerator),
     filtering by subject or date range if provided.
     """
-    query_session = ClassSession.query.filter_by(course_id=course_id)
+    query_session = ClassSession.query.filter_by(course_id=course_id, status='Submitted')
     if subject_name:
         query_session = query_session.filter_by(subject_name=subject_name)
     if start_date:

@@ -63,7 +63,7 @@
                             <span class="text-muted small">No Course</span>
                             {% endif %}
                         </td>
-                        <td><span class="badge bg-secondary">{{ fee.fee_month }}</span></td>
+                        <td><span class="badge bg-secondary">{{ fee.fee_month | format_fee_month }}</span></td>
                         <td>
                             <span class="badge {% if fee.payment_method == 'Cash' %}bg-warning text-dark{% else %}bg-info text-white{% endif %}">
                                 {{ fee.payment_method }}
@@ -133,7 +133,7 @@
                                         
                                         <div class="col-6 mt-2">
                                             <span class="text-muted d-block small">Fee Month</span>
-                                            <strong>{{ fee.fee_month }}</strong>
+                                            <strong>{{ fee.fee_month | format_fee_month }}</strong>
                                         </div>
                                         
                                         <hr class="my-2">

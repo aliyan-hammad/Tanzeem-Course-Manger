@@ -4,7 +4,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash
 from extensions import db
-from models import User, Course, Student, FeeCollection, Expense, Attendance, AuditLog, ApprovalRequest, ClassSession
+from models import User, Course, Student, FeeCollection, Expense, Attendance, AuditLog, ApprovalRequest, ClassSession, CourseStaff
 from helpers import log_audit, calculate_attendance
 from sync_listeners import trigger_sync_fee_month, trigger_sync_expense_month
 
@@ -19,41 +19,108 @@ def staff():
         return redirect(url_for('dashboard.index'))
         
     if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
+        form_type = request.form.get('form_type')
         full_name = request.form.get('full_name')
         contact = request.form.get('contact')
-        role = request.form.get('role', 'General Staff')
-        
-        existing = None
-        if role != 'General Staff':
-            existing = User.query.filter_by(username=username).first()
+        cnic = request.form.get('cnic')
+        email = request.form.get('email')
+        date_of_joining_str = request.form.get('date_of_joining')
+        date_of_joining = datetime.strptime(date_of_joining_str, '%Y-%m-%d').date() if date_of_joining_str else None
+
+        if form_type in ['coordinator', 'teacher', 'ta']:
+            username = request.form.get('username')
+            password = request.form.get('password')
+            role_map = {'coordinator': 'Coordinator', 'teacher': 'Teacher', 'ta': 'TA'}
+            role = role_map.get(form_type)
             
-        if existing:
-            flash('Username already exists!', 'danger')
-        else:
-            if role == 'General Staff':
-                import uuid
-                username = f"gs_{uuid.uuid4().hex[:8]}"
-                password = uuid.uuid4().hex
+            if User.query.filter_by(username=username).first():
+                flash('Username already exists!', 'danger')
+                return redirect(url_for('admin.staff'))
                 
+            salary_type = request.form.get('salary_type', 'Fixed Monthly')
+            salary_amount = float(request.form.get('salary_amount', 0.0))
+            bank_details = request.form.get('bank_details')
+            
             hashed_pw = generate_password_hash(password)
-            new_staff = User(
+            new_user = User(
                 username=username, 
                 password_hash=hashed_pw, 
                 role=role,
                 full_name=full_name,
                 contact=contact,
+                cnic=cnic,
+                email=email,
+                date_of_joining=date_of_joining,
+                salary_type=salary_type,
+                salary_amount=salary_amount,
+                bank_details=bank_details,
                 status='Active'
             )
-            db.session.add(new_staff)
+            db.session.add(new_user)
             db.session.commit()
-            log_audit('Create', 'User', record_id=new_staff.id, remarks=f'Admin registered {role}: {full_name} ({username})')
-            flash(f'{role} "{full_name}" registered successfully!', 'success')
+            
+            # Handle Course assignment for Teacher/TA
+            if role in ['Teacher', 'TA']:
+                course_id = request.form.get('course_id')
+                if course_id:
+                    subjects_taught = request.form.get('subjects_taught') if role == 'Teacher' else None
+                    assigned_teacher_id = request.form.get('assigned_teacher_id') if role == 'TA' else None
+                    
+                    new_staff = CourseStaff(
+                        course_id=int(course_id),
+                        user_id=new_user.id,
+                        role_in_course=role,
+                        assigned_teacher_id=int(assigned_teacher_id) if assigned_teacher_id else None,
+                        subjects_taught=subjects_taught
+                    )
+                    db.session.add(new_staff)
+                    db.session.commit()
+            
+            log_audit('Create', 'User', record_id=new_user.id, remarks=f'Admin registered {role}: {full_name}')
+            flash(f'{role} registered successfully!', 'success')
+            
+        elif form_type == 'general_staff':
+            role = request.form.get('role')
+            if role == 'Other':
+                role = request.form.get('custom_role')
+            
+            salary = float(request.form.get('salary', 0.0))
+            payment_method = request.form.get('payment_method', 'Cash')
+            address = request.form.get('address')
+            
+            from models import GeneralStaff
+            new_gs = GeneralStaff(
+                name=full_name,
+                contact=contact,
+                address=address,
+                cnic=cnic,
+                role=role,
+                salary=salary,
+                payment_method=payment_method,
+                date_of_joining=date_of_joining
+            )
+            db.session.add(new_gs)
+            db.session.commit()
+            log_audit('Create', 'GeneralStaff', record_id=new_gs.id, remarks=f'Admin registered General Staff: {full_name}')
+            flash(f'General Staff registered successfully!', 'success')
+            
         return redirect(url_for('admin.staff'))
         
-    all_staff = User.query.filter(User.role != 'Admin', User.role != 'Student', User.role != 'CR').all()
-    return render_template('staff.html', staff=all_staff)
+    coordinators = User.query.filter_by(role='Coordinator').all()
+    teachers_tas = User.query.filter(User.role.in_(['Teacher', 'TA'])).all()
+    from models import GeneralStaff
+    general_staff = GeneralStaff.query.all()
+    crs = User.query.filter_by(role='CR').all()
+    active_courses = Course.query.filter_by(status='Active').all()
+    active_teachers = User.query.filter_by(role='Teacher', status='Active').all()
+    
+    return render_template('staff.html', 
+                           coordinators=coordinators, 
+                           teachers_tas=teachers_tas, 
+                           general_staff=general_staff, 
+                           crs=crs,
+                           active_courses=active_courses,
+                           active_teachers=active_teachers)
 
 @admin_bp.route('/staff/edit/<int:id>', methods=['POST'])
 @login_required
@@ -67,18 +134,100 @@ def edit_staff(id):
     staff_member.full_name = request.form.get('full_name')
     staff_member.contact = request.form.get('contact')
     staff_member.status = request.form.get('status')
+    staff_member.cnic = request.form.get('cnic')
+    staff_member.email = request.form.get('email')
+    
+    date_of_joining_str = request.form.get('date_of_joining')
+    if date_of_joining_str:
+        from datetime import datetime
+        staff_member.date_of_joining = datetime.strptime(date_of_joining_str, '%Y-%m-%d').date()
+        
+    staff_member.salary_amount = float(request.form.get('salary_amount', 0.0))
+    if request.form.get('salary_type'):
+        staff_member.salary_type = request.form.get('salary_type')
+    if request.form.get('bank_details') is not None:
+        staff_member.bank_details = request.form.get('bank_details')
+        
     if request.form.get('role'):
         staff_member.role = request.form.get('role')
         
-    # Only process username/password if not General Staff
     if staff_member.role != 'General Staff':
         password = request.form.get('password')
         if password:
             staff_member.password_hash = generate_password_hash(password)
+            
+    # Handle CourseStaff updates for Teacher/TA
+    if staff_member.role in ['Teacher', 'TA']:
+        course_id = request.form.get('course_id')
+        if course_id:
+            course_staff = CourseStaff.query.filter_by(user_id=staff_member.id).first()
+            if not course_staff:
+                course_staff = CourseStaff(user_id=staff_member.id)
+                db.session.add(course_staff)
+                
+            course_staff.course_id = int(course_id)
+            course_staff.role_in_course = staff_member.role
+            
+            if staff_member.role == 'Teacher':
+                course_staff.subjects_taught = request.form.get('subjects_taught')
+                course_staff.assigned_teacher_id = None
+            elif staff_member.role == 'TA':
+                assigned_tid = request.form.get('assigned_teacher_id')
+                course_staff.assigned_teacher_id = int(assigned_tid) if assigned_tid else None
+                course_staff.subjects_taught = None
         
     db.session.commit()
-    log_audit('Update', 'User', record_id=staff_member.id, remarks=f'Admin modified staff: {staff_member.username}. Status: {old_status} -> {staff_member.status}')
-    flash(f'Staff "{staff_member.full_name}" credentials updated successfully!', 'success')
+    log_audit('Update', 'User', record_id=staff_member.id, remarks=f'Admin modified staff: {staff_member.username}')
+    flash(f'Staff details updated successfully!', 'success')
+    return redirect(url_for('admin.staff'))
+
+
+@admin_bp.route('/gs/edit/<int:id>', methods=['POST'])
+@login_required
+def edit_gs(id):
+    if current_user.role != 'Admin':
+        flash('Access denied!', 'danger')
+        return redirect(url_for('dashboard.index'))
+        
+    from models import GeneralStaff
+    gs = GeneralStaff.query.get_or_404(id)
+    
+    gs.name = request.form.get('full_name')
+    gs.contact = request.form.get('contact')
+    gs.cnic = request.form.get('cnic')
+    
+    role = request.form.get('role')
+    if role == 'Other':
+        role = request.form.get('custom_role')
+    gs.role = role
+    
+    gs.salary = float(request.form.get('salary', 0.0))
+    gs.payment_method = request.form.get('payment_method', 'Cash')
+    
+    date_of_joining_str = request.form.get('date_of_joining')
+    if date_of_joining_str:
+        from datetime import datetime
+        gs.date_of_joining = datetime.strptime(date_of_joining_str, '%Y-%m-%d').date()
+        
+    db.session.commit()
+    log_audit('Update', 'GeneralStaff', record_id=gs.id, remarks=f'Admin modified GS: {gs.name}')
+    flash(f'General Staff updated successfully!', 'success')
+    return redirect(url_for('admin.staff'))
+
+@admin_bp.route('/gs/delete/<int:id>', methods=['POST'])
+@login_required
+def delete_gs(id):
+    if current_user.role != 'Admin':
+        flash('Access denied!', 'danger')
+        return redirect(url_for('dashboard.index'))
+        
+    from models import GeneralStaff
+    gs = GeneralStaff.query.get_or_404(id)
+    name = gs.name
+    db.session.delete(gs)
+    db.session.commit()
+    log_audit('Delete', 'GeneralStaff', record_id=id, remarks=f'Admin deleted GS: {name}')
+    flash('General Staff member deleted successfully!', 'success')
     return redirect(url_for('admin.staff'))
 
 @admin_bp.route('/staff/delete/<int:id>', methods=['POST'])
@@ -221,30 +370,53 @@ def reports():
         return redirect(url_for('dashboard.index'))
         
     today = date.today()
-    default_start = date(today.year, today.month, 1).strftime('%Y-%m-%d')
-    default_end = today.strftime('%Y-%m-%d')
+    default_month = today.strftime('%Y-%m')
     
     # Session Persistence
     if request.method == 'POST' or 'filter_applied' in request.args:
-        start_date_str = request.form.get('start_date') or request.args.get('start_date') or default_start
-        end_date_str = request.form.get('end_date') or request.args.get('end_date') or default_end
+        report_month = request.form.get('report_month') or request.args.get('report_month') or default_month
         course_id_str = request.form.get('course_id') or request.args.get('course_id')
         subject = request.form.get('subject') or request.args.get('subject')
         
-        session['report_start_date'] = start_date_str
-        session['report_end_date'] = end_date_str
+        session['report_month'] = report_month
         session['report_course_id'] = course_id_str
         session['report_subject'] = subject
     else:
-        start_date_str = session.get('report_start_date', default_start)
-        end_date_str = session.get('report_end_date', default_end)
+        report_month = session.get('report_month', default_month)
         course_id_str = session.get('report_course_id')
         subject = session.get('report_subject')
         
+    courses_list = Course.query.filter_by(status='Active').all()
+    
+    if not course_id_str and courses_list:
+        course_id_str = str(courses_list[0].id)
+        
     course_id = int(course_id_str) if (course_id_str and course_id_str.isdigit()) else None
     
-    start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
-    end_date = datetime.strptime(end_date_str + ' 23:59:59', '%Y-%m-%d %H:%M:%S')
+    import calendar
+    from dateutil.relativedelta import relativedelta
+    from datetime import timedelta
+    year, month = map(int, report_month.split('-'))
+    
+    course_day = 1
+    if course_id:
+        c_obj = Course.query.get(course_id)
+        if c_obj and c_obj.start_date:
+            course_day = c_obj.start_date.day
+            
+    try:
+        start_date = datetime(year, month, course_day)
+    except ValueError:
+        # Snap to end of month if course day is 31 and month only has 30 days
+        start_date = datetime(year, month, calendar.monthrange(year, month)[1])
+        
+    end_date = start_date + relativedelta(months=1) - timedelta(seconds=1)
+    
+    # Generate last 24 months for dropdown
+    months_list = []
+    for i in range(24):
+        d = today - relativedelta(months=i)
+        months_list.append(d.strftime('%Y-%m'))
     
     # 1. Student Registry (No date filter, but course filter applies)
     student_query = Student.query
@@ -252,10 +424,9 @@ def reports():
         student_query = student_query.filter_by(course_id=course_id)
     students_list = student_query.order_by(Student.registration_id.desc()).all()
     
-    # 2. Fee Collection Report (Date range filter, course filter applies)
+    # 2. Fee Collection Report (Fee Month filter, course filter applies)
     fee_query = FeeCollection.query.filter(
-        FeeCollection.date_collected >= start_date,
-        FeeCollection.date_collected <= end_date,
+        FeeCollection.fee_month == report_month,
         FeeCollection.is_deleted == False
     )
     if course_id:
@@ -274,37 +445,77 @@ def reports():
     expenses_list = expense_query.order_by(Expense.expense_date.desc()).all()
     total_expenses = sum([e.amount for e in expenses_list])
     
-    # 4. Attendance Summary (Date range filter, course filter applies)
-    attendance_query = Attendance.query.join(ClassSession).filter(
-        ClassSession.date >= start_date.date(),
-        ClassSession.date <= end_date.date()
-    )
+    # Calculate Cumulative Net Balance up to the end_date of the selected month
+    cum_fee_q = FeeCollection.query.filter(FeeCollection.date_collected <= end_date, FeeCollection.is_deleted == False)
     if course_id:
-        attendance_query = attendance_query.join(Student).filter(Student.course_id == course_id)
-    if subject:
-        attendance_query = attendance_query.filter(ClassSession.subject_name == subject)
-    attendances_list = attendance_query.all()
+        cum_fee_q = cum_fee_q.join(Student).filter(Student.course_id == course_id)
     
-    # Group attendance by student
+    cum_exp_q = Expense.query.filter(Expense.expense_date <= end_date, Expense.is_deleted == False)
+    if course_id:
+        cum_exp_q = cum_exp_q.filter_by(course_id=course_id)
+        
+    cumulative_net_balance = sum([f.amount_paid for f in cum_fee_q.all()]) - sum([e.amount for e in cum_exp_q.all()])
+    
+    prev_end_date = start_date - timedelta(seconds=1)
+    prev_fee_q = FeeCollection.query.filter(FeeCollection.date_collected <= prev_end_date, FeeCollection.is_deleted == False)
+    if course_id:
+        prev_fee_q = prev_fee_q.join(Student).filter(Student.course_id == course_id)
+        
+    prev_exp_q = Expense.query.filter(Expense.expense_date <= prev_end_date, Expense.is_deleted == False)
+    if course_id:
+        prev_exp_q = prev_exp_q.filter_by(course_id=course_id)
+        
+    prev_cumulative_net_balance = sum([f.amount_paid for f in prev_fee_q.all()]) - sum([e.amount for e in prev_exp_q.all()])
+    current_net_profit = total_fees - total_expenses
+    
+    prev_month_dt = start_date - relativedelta(months=1)
+    prev_month_str = prev_month_dt.strftime('%Y-%m')
+    
+    # 4. Attendance Summary (Date range filter, course filter applies)
+    students_query = Student.query.filter_by(status='Active')
+    if course_id:
+        students_query = students_query.filter_by(course_id=course_id)
+    students_list = students_query.all()
+    
     attendance_stats = {}
-    for att in attendances_list:
-        if att.student_id not in attendance_stats:
-            calc = calculate_attendance(att.student_id, att.student.course_id, subject_name=subject, start_date=start_date.date(), end_date=end_date.date())
-            attendance_stats[att.student_id] = {'present': 0, 'absent': 0, 'leave': 0, 'student': att.student, 'calc': calc}
-        if att.status == 'Present':
-            attendance_stats[att.student_id]['present'] += 1
-        elif att.status == 'Absent':
-            attendance_stats[att.student_id]['absent'] += 1
-        elif att.status == 'Leave':
-            attendance_stats[att.student_id]['leave'] += 1
+    for s in students_list:
+        calc = calculate_attendance(s.id, s.course_id, subject_name=subject, start_date=start_date.date(), end_date=end_date.date())
+        
+        leave_query = Attendance.query.join(ClassSession).filter(
+            Attendance.student_id == s.id,
+            Attendance.status == 'Leave',
+            ClassSession.course_id == s.course_id,
+            ClassSession.status == 'Submitted'
+        )
+        if subject:
+            leave_query = leave_query.filter(ClassSession.subject_name == subject)
+        if start_date:
+            leave_query = leave_query.filter(ClassSession.date >= start_date.date())
+        if end_date:
+            leave_query = leave_query.filter(ClassSession.date <= end_date.date())
             
-    courses_list = Course.query.filter_by(status='Active').all()
-    
+        leave_count = leave_query.count()
+        present_count = calc['attended']
+        total_sessions = calc['total']
+        absent_count = max(0, total_sessions - present_count - leave_count)
+        
+        attendance_stats[s.id] = {
+            'present': present_count,
+            'absent': absent_count,
+            'leave': leave_count,
+            'student': s,
+            'calc': calc
+        }
+            
     return render_template('reports.html',
                            total_fees=total_fees,
                            total_expenses=total_expenses,
-                           start_date=start_date_str,
-                           end_date=end_date_str,
+                           cumulative_net_balance=cumulative_net_balance,
+                           prev_cumulative_net_balance=prev_cumulative_net_balance,
+                           current_net_profit=current_net_profit,
+                           prev_month_str=prev_month_str,
+                           report_month=report_month,
+                           months_list=months_list,
                            selected_course_id=course_id_str,
                            selected_subject=subject,
                            courses=courses_list,
