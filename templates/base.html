@@ -342,6 +342,9 @@
             <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline-danger w-100 text-nowrap">
                 <i class="bi bi-box-arrow-right"></i> Logout
             </a>
+            <div class="text-center mt-2">
+                <small class="text-white-50" style="font-size: 0.75rem; letter-spacing: 0.5px;">Tanzeem {{ config.APP_VERSION | default('v1.1.0') }}</small>
+            </div>
         </div>
     </nav>
     {% endif %}
