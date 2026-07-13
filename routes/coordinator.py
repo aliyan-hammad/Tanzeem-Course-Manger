@@ -207,7 +207,7 @@ def fees():
         return redirect(url_for('coordinator.fees'))
         
     selected_course_id = request.args.get('course_id')
-    selected_month = request.args.get('fee_month', datetime.now().strftime('%Y-%m'))
+    selected_month = request.args.get('filter_fee_month', datetime.now().strftime('%Y-%m'))
 
     if current_user.role == 'Coordinator':
         assigned_courses = Course.query.filter_by(coordinator_id=current_user.id).all()
@@ -224,6 +224,31 @@ def fees():
 
     c_filter = int(selected_course_id)
     
+    from dateutil.relativedelta import relativedelta
+    c_obj = Course.query.get(c_filter)
+    available_months = []
+    if c_obj and c_obj.start_date:
+        start_m = datetime(c_obj.start_date.year, c_obj.start_date.month, 1)
+    else:
+        start_m = datetime.now() - relativedelta(months=6)
+        start_m = datetime(start_m.year, start_m.month, 1)
+        
+    current_m = datetime(datetime.now().year, datetime.now().month, 1)
+    if start_m > current_m:
+        current_m = start_m
+        
+    temp_m = start_m
+    while temp_m <= current_m:
+        available_months.append({
+            'value': temp_m.strftime('%Y-%m'),
+            'label': temp_m.strftime('%B %Y')
+        })
+        temp_m += relativedelta(months=1)
+    available_months.reverse()
+    
+    if not any(m['value'] == selected_month for m in available_months) and available_months:
+        selected_month = available_months[0]['value']
+    
     all_fees = FeeCollection.query.join(Student).filter(
         Student.course_id == c_filter, 
         FeeCollection.is_deleted == False,
@@ -231,8 +256,9 @@ def fees():
     ).order_by(FeeCollection.date_collected.desc()).all()
     
     active_students = Student.query.filter_by(course_id=c_filter, status='Active').all()
+    total_fee_collected = sum(f.amount_paid for f in all_fees)
         
-    return render_template('fees.html', fees=all_fees, active_students=active_students, courses=courses_list, selected_course_id=selected_course_id, selected_month=selected_month, pagination=None)
+    return render_template('fees.html', fees=all_fees, active_students=active_students, courses=courses_list, selected_course_id=selected_course_id, selected_month=selected_month, pagination=None, total_fee_collected=total_fee_collected, available_months=available_months)
 
 @coordinator_bp.route('/attendance', methods=['GET'])
 @login_required
@@ -578,7 +604,7 @@ def expenses():
         return redirect(url_for('coordinator.expenses'))
         
     selected_course_id = request.args.get('course_id')
-    selected_month = request.args.get('expense_month', datetime.now().strftime('%Y-%m'))
+    selected_month = request.args.get('filter_expense_month', datetime.now().strftime('%Y-%m'))
     
     try:
         target_year, target_month = map(int, selected_month.split('-'))
@@ -600,14 +626,60 @@ def expenses():
 
     c_filter = int(selected_course_id)
     
+    import calendar
+    from dateutil.relativedelta import relativedelta
+    from datetime import timedelta
+    
+    course_day = 1
+    c_obj = Course.query.get(c_filter)
+    
+    available_months = []
+    if c_obj and c_obj.start_date:
+        start_m = datetime(c_obj.start_date.year, c_obj.start_date.month, 1)
+    else:
+        start_m = datetime.now() - relativedelta(months=6)
+        start_m = datetime(start_m.year, start_m.month, 1)
+        
+    current_m = datetime(datetime.now().year, datetime.now().month, 1)
+    if start_m > current_m:
+        current_m = start_m
+        
+    temp_m = start_m
+    while temp_m <= current_m:
+        available_months.append({
+            'value': temp_m.strftime('%Y-%m'),
+            'label': temp_m.strftime('%B %Y')
+        })
+        temp_m += relativedelta(months=1)
+    available_months.reverse()
+    
+    if not any(m['value'] == selected_month for m in available_months) and available_months:
+        selected_month = available_months[0]['value']
+        try:
+            target_year, target_month = map(int, selected_month.split('-'))
+        except ValueError:
+            pass
+
+    if c_obj and c_obj.start_date:
+        course_day = c_obj.start_date.day
+        
+    try:
+        start_date = datetime(target_year, target_month, course_day)
+    except ValueError:
+        start_date = datetime(target_year, target_month, calendar.monthrange(target_year, target_month)[1])
+        
+    end_date = start_date + relativedelta(months=1) - timedelta(seconds=1)
+    
     all_expenses = Expense.query.filter(
         Expense.course_id == c_filter,
         Expense.is_deleted == False,
-        db.extract('year', Expense.expense_date) == target_year,
-        db.extract('month', Expense.expense_date) == target_month
+        Expense.expense_date >= start_date,
+        Expense.expense_date <= end_date
     ).order_by(Expense.expense_date.desc()).all()
+    
+    total_expenses_collected = sum(e.amount for e in all_expenses)
         
-    return render_template('expenses.html', expenses=all_expenses, courses=courses_list, selected_course_id=selected_course_id, selected_month=selected_month, pagination=None)
+    return render_template('expenses.html', expenses=all_expenses, courses=courses_list, selected_course_id=selected_course_id, selected_month=selected_month, pagination=None, total_expenses_collected=total_expenses_collected, available_months=available_months)
 
 # --- Approval Requests ---
 @coordinator_bp.route('/request_edit', methods=['POST'])

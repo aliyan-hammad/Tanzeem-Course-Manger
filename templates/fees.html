@@ -22,8 +22,13 @@
                 {% endfor %}
             </select>
             
-            <label for="fee_month" class="text-nowrap fw-bold mb-0 ms-sm-2">Month:</label>
-            <input type="month" class="form-control form-control-sm" id="fee_month" name="fee_month" value="{{ selected_month }}" onchange="this.form.submit()" style="max-width: 150px;">
+            <label for="filter_fee_month" class="text-nowrap fw-bold mb-0 ms-sm-2">Month:</label>
+            <!-- DEBUG: selected_month='{{ selected_month }}' -->
+            <select class="form-select form-select-sm w-auto" id="filter_fee_month" name="filter_fee_month" onchange="this.form.submit()">
+                {% for month in available_months %}
+                <option value="{{ month['value'] }}" {% if selected_month|string == month['value']|string %}selected{% endif %}>{{ month['label'] }}</option>
+                {% endfor %}
+            </select>
         </form>
         {% if current_user.role == 'Coordinator' %}
         <button class="btn btn-success text-nowrap" data-bs-toggle="modal" data-bs-target="#collectFeeModal">
@@ -330,7 +335,7 @@
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label for="fee_month" class="form-label">Fee Month <span class="text-danger">*</span></label>
+                        <label for="filter_fee_month" class="form-label">Fee Month <span class="text-danger">*</span></label>
                         <input type="month" class="form-control" id="fee_month" name="fee_month" required>
                         <script>
                             // Default to current month
@@ -364,7 +369,7 @@
 <script type="text/javascript" src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
 <script>
 $(document).ready(function() {
-    $('#feesTable').DataTable({
+    var table = $('#feesTable').DataTable({
                 responsive: true,
         "pageLength": 10,
         "lengthChange": false,
@@ -376,6 +381,7 @@ $(document).ready(function() {
             "search": "Search Fee Vouchers:"
         }
     });
+    $('#feesTable_wrapper .col-md-6:first').html('<h5 class="mb-0 mt-1"><span class="badge bg-success shadow-sm px-3 py-2">Total Fees: Rs. {{ "%.0f"|format(total_fee_collected) if total_fee_collected else 0 }}</span></h5>');
 });
 </script>
 {% endblock %}

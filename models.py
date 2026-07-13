@@ -130,7 +130,7 @@ class ClassSession(db.Model):
     def fallback_teacher_name(self):
         staff = CourseStaff.query.filter(
             CourseStaff.course_id == self.course_id,
-            CourseStaff.role_in_course == 'Primary Teacher'
+            CourseStaff.role_in_course == 'Teacher'
         ).all()
         for s in staff:
             if s.subjects_taught and self.subject_name in s.subjects_taught:

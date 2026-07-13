@@ -22,8 +22,12 @@
                 {% endfor %}
             </select>
             
-            <label for="expense_month" class="text-nowrap fw-bold mb-0 ms-sm-2">Month:</label>
-            <input type="month" class="form-control form-control-sm" id="expense_month" name="expense_month" value="{{ selected_month }}" onchange="this.form.submit()" style="max-width: 150px;">
+            <label for="filter_expense_month" class="text-nowrap fw-bold mb-0 ms-sm-2">Month:</label>
+            <select class="form-select form-select-sm w-auto" id="filter_expense_month" name="filter_expense_month" onchange="this.form.submit()">
+                {% for month in available_months %}
+                <option value="{{ month['value'] }}" {% if selected_month|string == month['value']|string %}selected{% endif %}>{{ month['label'] }}</option>
+                {% endfor %}
+            </select>
         </form>
         {% if current_user.role == 'Coordinator' %}
         <button class="btn btn-danger text-nowrap" data-bs-toggle="modal" data-bs-target="#addExpenseModal">
@@ -366,7 +370,7 @@ function toggleCustomTitle(selectEl, divId) {
 <script type="text/javascript" src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
 <script>
 $(document).ready(function() {
-    $('#expensesTable').DataTable({
+    var table = $('#expensesTable').DataTable({
                 responsive: true,
         "pageLength": 10,
         "lengthChange": false,
@@ -378,6 +382,7 @@ $(document).ready(function() {
             "search": "Search Expenses:"
         }
     });
+    $('#expensesTable_wrapper .col-md-6:first').html('<h5 class="mb-0 mt-1"><span class="badge bg-danger shadow-sm px-3 py-2">Total Expenses: Rs. {{ "%.0f"|format(total_expenses_collected) if total_expenses_collected else 0 }}</span></h5>');
 });
 </script>
 {% endif %}

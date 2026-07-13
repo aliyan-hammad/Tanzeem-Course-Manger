@@ -84,3 +84,44 @@
 </div>
 <br><br><br> <!-- Space for floating button -->
 {% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const sessionId = "{{ session_obj.id }}";
+    const storageKey = "attendance_draft_" + sessionId;
+    const form = document.getElementById("attendanceForm");
+    
+    // Load from local storage if exists
+    const savedDraft = localStorage.getItem(storageKey);
+    let draftData = {};
+    if (savedDraft) {
+        try {
+            draftData = JSON.parse(savedDraft);
+            // Apply saved radio selections
+            for (const [name, value] of Object.entries(draftData)) {
+                const radio = form.querySelector(`input[name="${name}"][value="${value}"]`);
+                if (radio) {
+                    radio.checked = true;
+                }
+            }
+        } catch(e) {
+            console.error("Failed to parse attendance draft");
+        }
+    }
+    
+    // Save to local storage on any radio change
+    form.addEventListener("change", function(e) {
+        if (e.target.type === "radio") {
+            draftData[e.target.name] = e.target.value;
+            localStorage.setItem(storageKey, JSON.stringify(draftData));
+        }
+    });
+    
+    // Clear local storage on successful submit
+    form.addEventListener("submit", function() {
+        localStorage.removeItem(storageKey);
+    });
+});
+</script>
+{% endblock %}

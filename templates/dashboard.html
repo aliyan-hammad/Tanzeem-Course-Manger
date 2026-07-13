@@ -340,7 +340,8 @@
                 });
             </script>
             <div class="card-body p-0">
-                <ul class="nav nav-tabs nav-fill mb-0 nav-tabs-scrollable" id="irregularitiesTabs" role="tablist">
+                <div class="tabs-fade-container">
+                    <ul class="nav nav-tabs nav-fill mb-0 nav-tabs-scrollable" id="irregularitiesTabs" role="tablist">
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active text-dark fw-bold" id="yesterday-tab" data-bs-toggle="tab" data-bs-target="#yesterday-absent" type="button" role="tab">
                             <span class="d-none d-sm-inline">Yesterday's Absentees</span><span class="d-inline d-sm-none">Yesterday</span>
@@ -362,6 +363,40 @@
                         </button>
                     </li>
                 </ul>
+                    <div class="tabs-fade-edge"></div>
+                </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tabs = document.querySelectorAll('#irregularitiesTabs .nav-link');
+    const container = document.querySelector('.tabs-fade-container');
+    const fadeEdge = document.querySelector('.tabs-fade-edge');
+    const scrollableUl = document.getElementById('irregularitiesTabs');
+
+    // Auto-scroll when tapped
+    tabs.forEach(tab => {
+        tab.addEventListener('shown.bs.tab', function (e) {
+            e.target.scrollIntoView({
+                behavior: 'smooth',
+                block: 'nearest',
+                inline: 'center'
+            });
+        });
+    });
+
+    // Optional: Hide fade edge if scrolled all the way to the right
+    scrollableUl.addEventListener('scroll', function() {
+        const maxScroll = scrollableUl.scrollWidth - scrollableUl.clientWidth;
+        if (scrollableUl.scrollLeft >= maxScroll - 5) {
+            fadeEdge.style.opacity = '0';
+        } else {
+            fadeEdge.style.opacity = '1';
+        }
+    });
+    fadeEdge.style.transition = 'opacity 0.3s ease';
+});
+</script>
+
                 <div class="tab-content p-3" id="irregularitiesTabContent">
                     <!-- Tab Yesterday -->
                     <div class="tab-pane fade show active" id="yesterday-absent" role="tabpanel">
@@ -810,17 +845,28 @@ function exportToPDF(wrapperId, filename) {
     overflow-y: hidden;
     white-space: nowrap;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
 .nav-tabs-scrollable::-webkit-scrollbar {
-    height: 4px;
+    display: none;
 }
-.nav-tabs-scrollable::-webkit-scrollbar-track {
-    background: transparent;
+
+.tabs-fade-container {
+    position: relative;
+    width: 100%;
 }
-.nav-tabs-scrollable::-webkit-scrollbar-thumb {
-    background: rgba(0,0,0,0.1);
-    border-radius: 4px;
+.tabs-fade-edge {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 50px;
+    background: linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,1));
+    pointer-events: none;
+    z-index: 10;
 }
+
 </style>
 
 <style>
@@ -898,17 +944,28 @@ function exportToPDF(wrapperId, filename) {
     overflow-y: hidden;
     white-space: nowrap;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
 .nav-tabs-scrollable::-webkit-scrollbar {
-    height: 4px;
+    display: none;
 }
-.nav-tabs-scrollable::-webkit-scrollbar-track {
-    background: transparent;
+
+.tabs-fade-container {
+    position: relative;
+    width: 100%;
 }
-.nav-tabs-scrollable::-webkit-scrollbar-thumb {
-    background: rgba(0,0,0,0.1);
-    border-radius: 4px;
+.tabs-fade-edge {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 50px;
+    background: linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,1));
+    pointer-events: none;
+    z-index: 10;
 }
+
 </style>
 
 <style>
@@ -1079,17 +1136,28 @@ function exportToPDF(wrapperId, filename) {
     overflow-y: hidden;
     white-space: nowrap;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
 .nav-tabs-scrollable::-webkit-scrollbar {
-    height: 4px;
+    display: none;
 }
-.nav-tabs-scrollable::-webkit-scrollbar-track {
-    background: transparent;
+
+.tabs-fade-container {
+    position: relative;
+    width: 100%;
 }
-.nav-tabs-scrollable::-webkit-scrollbar-thumb {
-    background: rgba(0,0,0,0.1);
-    border-radius: 4px;
+.tabs-fade-edge {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 50px;
+    background: linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,1));
+    pointer-events: none;
+    z-index: 10;
 }
+
 </style>
 
 <style>
@@ -1167,17 +1235,28 @@ function exportToPDF(wrapperId, filename) {
     overflow-y: hidden;
     white-space: nowrap;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
 .nav-tabs-scrollable::-webkit-scrollbar {
-    height: 4px;
+    display: none;
 }
-.nav-tabs-scrollable::-webkit-scrollbar-track {
-    background: transparent;
+
+.tabs-fade-container {
+    position: relative;
+    width: 100%;
 }
-.nav-tabs-scrollable::-webkit-scrollbar-thumb {
-    background: rgba(0,0,0,0.1);
-    border-radius: 4px;
+.tabs-fade-edge {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 50px;
+    background: linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,1));
+    pointer-events: none;
+    z-index: 10;
 }
+
 </style>
 
 <style>
