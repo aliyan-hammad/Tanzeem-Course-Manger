@@ -2,7 +2,7 @@ from datetime import datetime, date, timedelta
 from flask import Blueprint, render_template, request, session, redirect, url_for
 from flask_login import login_required, current_user
 from extensions import db
-from models import CourseStaff, User, Course, Student, FeeCollection, Expense, AuditLog, ApprovalRequest, ClassSession, Attendance
+from models import CourseStaff, User, Course, Student, FeeCollection, Expense, AuditLog, ApprovalRequest, ClassSession, Attendance, Donation
 from helpers import calculate_attendance
 
 dashboard_bp = Blueprint('dashboard', __name__)
@@ -123,7 +123,7 @@ def index():
         if not assigned_course_ids:
             return render_template('dashboard.html', 
                                    total_active_students=0, hand_cash=0.0, in_account=0.0,
-                                   total_fees=0.0, total_expenses=0.0, net_balance=0.0, students_paid_count=0, current_cycle_month_name='',
+                                   total_fees=0.0, total_expenses=0.0, total_donations=0.0, donations=[], latest_donations=[], net_balance=0.0, students_paid_count=0, current_cycle_month_name='',
                                    latest_fees=[], latest_expenses=[], courses=[],
                                    today_collections=0.0, monthly_collections=0.0,
                                    expenses_added=0.0, pending_requests_count=0,
@@ -132,12 +132,14 @@ def index():
             
         base_fee_q = FeeCollection.query.join(Student).filter(Student.course_id.in_(assigned_course_ids), FeeCollection.is_deleted==False)
         base_exp_q = Expense.query.filter(Expense.course_id.in_(assigned_course_ids), Expense.is_deleted==False)
+        base_don_q = Donation.query.filter(Donation.deleted_at.is_(None)) # Donations are not course-specific usually, but let's keep them global or filter if needed. Let's make them global for now.
         base_stu_q = Student.query.filter(Student.course_id.in_(assigned_course_ids), Student.status=='Active')
         
     else: # Admin
         courses_list = Course.query.filter_by(status='Active').all()
         base_fee_q = FeeCollection.query.join(Student).filter(FeeCollection.is_deleted==False)
         base_exp_q = Expense.query.filter(Expense.is_deleted==False)
+        base_don_q = Donation.query.filter(Donation.deleted_at.is_(None))
         base_stu_q = Student.query.filter(Student.status=='Active')
     if not selected_course_id and courses_list:
         selected_course_id = str(courses_list[0].id)
@@ -156,9 +158,11 @@ def index():
     if start_date:
         base_fee_q = base_fee_q.filter(FeeCollection.date_collected >= start_date)
         base_exp_q = base_exp_q.filter(Expense.expense_date >= start_date)
+        base_don_q = base_don_q.filter(Donation.date >= start_date)
     if end_date:
         base_fee_q = base_fee_q.filter(FeeCollection.date_collected <= end_date)
         base_exp_q = base_exp_q.filter(Expense.expense_date <= end_date)
+        base_don_q = base_don_q.filter(Donation.date <= end_date)
 
     # Calculate Metrics
     fees = base_fee_q.all()
@@ -167,6 +171,8 @@ def index():
     total_fees = hand_cash + in_account
     expenses = base_exp_q.all()
     total_expenses = sum(e.amount for e in expenses)
+    donations = base_don_q.order_by(Donation.date.desc()).all()
+    total_donations = sum(d.amount for d in donations)
     
     # Calculate students paid count dynamically based on the course start_date
     students_paid_count = 0
@@ -202,6 +208,10 @@ def index():
             cycle_expenses = sum(e.amount for e in expenses if e.expense_date and current_cycle_start <= e.expense_date.date() <= current_cycle_end)
             monthly_expenses_override = cycle_expenses
             
+            # Donations remain time-bound
+            cycle_donations = sum(d.amount for d in donations if d.date and current_cycle_start <= d.date <= current_cycle_end)
+            monthly_donations_override = cycle_donations
+            
             # Calculate Next Cycle Advance Payments
             next_cycle_start = current_cycle_start + relativedelta(months=1)
             next_cycle_str = next_cycle_start.strftime('%Y-%m')
@@ -213,10 +223,11 @@ def index():
     else:
         students_paid_count = len(set(f.student_id for f in fees))
 
-    net_balance = total_fees - total_expenses
+    net_balance = total_fees + total_donations - total_expenses
     
     latest_fees = base_fee_q.order_by(FeeCollection.date_collected.desc()).limit(5).all()
     latest_expenses = base_exp_q.order_by(Expense.expense_date.desc()).limit(5).all()
+    latest_donations = base_don_q.order_by(Donation.date.desc()).limit(5).all()
 
     # Role specific logic
 
@@ -403,6 +414,8 @@ def index():
                                    in_account=in_account,
                                    total_fees=total_fees,
                                    total_expenses=total_expenses,
+                                   total_donations=total_donations,
+                                   total_collections_combined=total_fees + total_donations,
                                    net_balance=net_balance,
                                    students_paid_count=students_paid_count,
                                    next_cycle_students_paid_count=locals().get('next_cycle_students_paid_count', 0),
@@ -414,6 +427,7 @@ def index():
                                    selected_course_id=selected_course_id,
                                    today_collections=today_collections,
                                    monthly_collections=monthly_collections,
+                                   monthly_donations=locals().get('monthly_donations_override', 0.0),
                                    monthly_expenses=locals().get('monthly_expenses_override', 0.0),
                                    expenses_added=total_expenses,
                                    pending_requests_count=pending_requests_count,
@@ -494,6 +508,8 @@ def index():
                                in_account=in_account,
                                total_fees=total_fees,
                                total_expenses=total_expenses,
+                               total_donations=total_donations,
+                               total_collections_combined=total_fees + total_donations,
                                net_balance=net_balance,
                                students_paid_count=students_paid_count,
                                next_cycle_students_paid_count=locals().get('next_cycle_students_paid_count', 0),
@@ -501,6 +517,7 @@ def index():
                                next_cycle_month_name=locals().get('next_cycle_month_name', ''),
                                latest_fees=latest_fees,
                                cycle_collections=locals().get('monthly_collections_override', 0.0),
+                               monthly_donations=locals().get('monthly_donations_override', 0.0),
                                cycle_expenses=locals().get('monthly_expenses_override', 0.0),
                                latest_expenses=latest_expenses,
                                courses=courses_list,

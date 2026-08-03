@@ -161,7 +161,7 @@
             nav.sidebar, header.top-navbar, main.main-content, .modal-backdrop, .modal, .no-print {
                 display: none !important;
             }
-            #print-temp-wrapper, #print-temp-wrapper * {
+            #print-temp-wrapper {
                 display: block !important;
                 visibility: visible !important;
             }
@@ -325,6 +325,11 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a href="{{ url_for('coordinator.donations') }}" class="nav-link {% if request.endpoint == 'coordinator.donations' %}active{% endif %}">
+                    <i class="bi bi-heart"></i> Donations
+                </a>
+            </li>
+            <li class="nav-item">
                 <a href="{{ url_for('coordinator.view_my_requests') }}" class="nav-link {% if request.endpoint == 'coordinator.view_my_requests' %}active{% endif %}">
                     <i class="bi bi-clock-history"></i> My Requests
                 </a>
@@ -429,11 +434,22 @@
             // Append clone to body
             document.body.appendChild(clone);
             
-            // Print the page
-            window.print();
+            // Wait a moment for DOM to update, then print
+            setTimeout(function() {
+                window.print();
+            }, 250);
             
-            // Clean up
-            clone.remove();
+            // Clean up after print dialogue closes
+            var cleanup = function() {
+                if (clone.parentNode) {
+                    clone.remove();
+                }
+            };
+            
+            // Most browsers support afterprint
+            window.addEventListener('afterprint', cleanup, {once: true});
+            // Fallback for mobile browsers that might not fire afterprint reliably
+            setTimeout(cleanup, 10000); // 10 seconds fallback
         }
     </script>
     {% block scripts %}{% endblock %}

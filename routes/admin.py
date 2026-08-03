@@ -616,6 +616,24 @@ def action_request(id):
                         new_month = record.expense_date.strftime('%B %Y')
                         if new_month != old_month:
                             trigger_sync_expense_month(current_app._get_current_object(), new_month)
+            elif req.module == 'Donation':
+                record = Donation.query.filter_by(id=req.record_id).filter(Donation.deleted_at.is_(None)).first()
+                if record:
+                    old_vals = {
+                        'donor_name': record.donor_name,
+                        'amount': record.amount,
+                        'cause': record.cause,
+                        'method': record.method,
+                        'date': record.date.strftime('%Y-%m-%d') if record.date else None
+                    }
+                    record.donor_name = payload['donor_name']
+                    record.amount = payload['amount']
+                    record.cause = payload['cause']
+                    record.method = payload['method']
+                    if payload['date']:
+                        record.date = datetime.strptime(payload['date'], '%Y-%m-%d')
+                    db.session.commit()
+                    log_audit('Update', 'Donation', record_id=record.id, old_values=old_vals, new_values=payload, remarks=f'Edit request approved: {admin_notes}')
         elif req.request_type == 'Delete':
             if req.module == 'Fee':
                 record = FeeCollection.query.filter_by(id=req.record_id, is_deleted=False).first()
@@ -641,6 +659,12 @@ def action_request(id):
                     
                     if record.expense_date:
                         trigger_sync_expense_month(current_app._get_current_object(), record.expense_date.strftime('%B %Y'))
+            elif req.module == 'Donation':
+                record = Donation.query.filter_by(id=req.record_id).filter(Donation.deleted_at.is_(None)).first()
+                if record:
+                    record.deleted_at = datetime.utcnow()
+                    db.session.commit()
+                    log_audit('Soft Delete', 'Donation', record_id=record.id, remarks=f'Delete request approved: {req.reason}')
                     
         flash(f'Request successfully {req.status.lower()}d!', 'success')
     else:

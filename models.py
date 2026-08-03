@@ -175,3 +175,15 @@ class ApprovalRequest(db.Model):
 
     requested_by = db.relationship('User', foreign_keys=[requested_by_id], backref='requests_made')
     actioned_by = db.relationship('User', foreign_keys=[actioned_by_id], backref='requests_actioned')
+
+class Donation(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    donor_name = db.Column(db.String(100), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    cause = db.Column(db.String(200)) # cause/purpose
+    method = db.Column(db.String(50)) # e.g., Cash, Bank Transfer
+    collected_by = db.Column(db.String(100))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    deleted_at = db.Column(db.DateTime, nullable=True)

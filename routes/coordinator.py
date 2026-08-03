@@ -3,7 +3,7 @@ from datetime import datetime, date
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from extensions import db
-from models import Course, Student, FeeCollection, Expense, Attendance, ApprovalRequest, ClassSession, CourseStaff, User
+from models import Course, Student, FeeCollection, Expense, Attendance, ApprovalRequest, ClassSession, CourseStaff, User, Donation
 from helpers import log_audit
 from sqlalchemy.exc import IntegrityError
 
@@ -313,6 +313,24 @@ def attendance():
             pass
             
     return render_template('attendance.html', courses=courses, active_course=course, todays_sessions=todays_sessions, pending_past_sessions=pending_past_sessions, past_sessions=past_sessions, active_course_staff=active_course_staff, today=today.strftime('%Y-%m-%d'), filter_date_str=filter_date_str, subjects=subjects_list)
+
+@coordinator_bp.route('/donations', methods=['GET'])
+@login_required
+def donations():
+    if current_user.role not in ['Admin', 'Coordinator']:
+        flash('Access denied!', 'danger')
+        return redirect(url_for('dashboard.index'))
+    
+    page = request.args.get('page', 1, type=int)
+    
+    # Calculate total donations
+    total_donation_collected = db.session.query(db.func.sum(Donation.amount)).filter(Donation.deleted_at.is_(None)).scalar() or 0.0
+    
+    # Paginate donations
+    pagination = Donation.query.filter(Donation.deleted_at.is_(None)).order_by(Donation.date.desc()).paginate(page=page, per_page=50, error_out=False)
+    donations_list = pagination.items
+    
+    return render_template('donations.html', donations=donations_list, pagination=pagination, total_donation_collected=total_donation_collected)
 
 @coordinator_bp.route('/create_session', methods=['POST'])
 @login_required
@@ -711,6 +729,15 @@ def request_edit():
             'expense_date': request.form.get('expense_date')
         }
         record = Expense.query.filter_by(id=record_id, is_deleted=False).first_or_404()
+    elif module == 'Donation':
+        payload = {
+            'donor_name': request.form.get('donor_name'),
+            'amount': float(request.form.get('amount')),
+            'cause': request.form.get('cause'),
+            'method': request.form.get('method'),
+            'date': request.form.get('date')
+        }
+        record = Donation.query.filter_by(id=record_id).first_or_404()
     else:
         flash('Invalid module!', 'danger')
         return redirect(url_for('dashboard.index'))
@@ -731,7 +758,13 @@ def request_edit():
     log_audit('Request Edit', module, record_id=record_id, new_values=payload, remarks=f'Edit request submitted: {reason}')
     
     flash(f'{module} edit request submitted for approval.', 'success')
-    return redirect(url_for('coordinator.fees' if module == 'Fee' else 'coordinator.expenses'))
+    
+    if module == 'Fee':
+        return redirect(url_for('coordinator.fees'))
+    elif module == 'Expense':
+        return redirect(url_for('coordinator.expenses'))
+    else:
+        return redirect(url_for('coordinator.donations'))
 
 @coordinator_bp.route('/request_delete', methods=['POST'])
 @login_required
@@ -748,6 +781,8 @@ def request_delete():
         record = FeeCollection.query.filter_by(id=record_id, is_deleted=False).first_or_404()
     elif module == 'Expense':
         record = Expense.query.filter_by(id=record_id, is_deleted=False).first_or_404()
+    elif module == 'Donation':
+        record = Donation.query.filter_by(id=record_id).first_or_404()
     else:
         flash('Invalid module!', 'danger')
         return redirect(url_for('dashboard.index'))
@@ -766,7 +801,13 @@ def request_delete():
     log_audit('Request Delete', module, record_id=record_id, remarks=f'Delete request submitted. Reason: {reason}')
     
     flash(f'{module} delete request submitted for approval.', 'success')
-    return redirect(url_for('coordinator.fees' if module == 'Fee' else 'coordinator.expenses'))
+    
+    if module == 'Fee':
+        return redirect(url_for('coordinator.fees'))
+    elif module == 'Expense':
+        return redirect(url_for('coordinator.expenses'))
+    else:
+        return redirect(url_for('coordinator.donations'))
 
 @coordinator_bp.route('/my_requests')
 @login_required
@@ -782,8 +823,47 @@ def view_my_requests():
     # Pre-load only records for context
     fee_ids = [r.record_id for r in requests_list if r.module == 'Fee']
     exp_ids = [r.record_id for r in requests_list if r.module == 'Expense']
+    don_ids = [r.record_id for r in requests_list if r.module == 'Donation']
     
     fee_records = {f.id: f for f in FeeCollection.query.filter(FeeCollection.id.in_(fee_ids)).all()} if fee_ids else {}
     expense_records = {e.id: e for e in Expense.query.filter(Expense.id.in_(exp_ids)).all()} if exp_ids else {}
+    donation_records = {d.id: d for d in Donation.query.filter(Donation.id.in_(don_ids)).all()} if don_ids else {}
     
-    return render_template('coordinator_requests.html', pagination=pagination, requests=requests_list, fee_records=fee_records, expense_records=expense_records, json=json)
+    return render_template('coordinator_requests.html', pagination=pagination, requests=requests_list, fee_records=fee_records, expense_records=expense_records, donation_records=donation_records, json=json)
+
+# --- Donation Management ---
+@coordinator_bp.route('/add_donation', methods=['POST'])
+@login_required
+def add_donation():
+    if current_user.role not in ['Admin', 'Coordinator']:
+        flash('Access denied!', 'danger')
+        return redirect(url_for('dashboard.index'))
+        
+    donor_name = request.form.get('donor_name')
+    amount_str = request.form.get('amount')
+    date_str = request.form.get('date')
+    cause = request.form.get('cause')
+    method = request.form.get('method')
+    
+    try:
+        amount = float(amount_str) if amount_str else 0.0
+        d_date = datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else date.today()
+        
+        donation = Donation(
+            donor_name=donor_name,
+            amount=amount,
+            date=d_date,
+            cause=cause,
+            method=method,
+            collected_by=current_user.full_name
+        )
+        
+        db.session.add(donation)
+        db.session.commit()
+        log_audit(current_user.id, 'Add Donation', f'Added donation from {donor_name} of amount {amount}')
+        flash('Donation recorded successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error adding donation: {str(e)}', 'danger')
+        
+    return redirect(request.referrer or url_for('coordinator.donations'))

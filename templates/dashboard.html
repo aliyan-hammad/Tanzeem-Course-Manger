@@ -207,19 +207,27 @@
             </div>
         </div>
     </div>
-    <div class="col-12 col-sm-6 col-lg-6">
+    <div class="col-12 col-sm-6 col-lg-4">
         <div class="card bg-white text-dark shadow-sm border-0 h-100">
             <div class="card-body py-3">
-                <h6 class="text-uppercase text-muted small mb-1">Total Fee Collected</h6>
-                <h3 class="mb-0 fw-bold text-success">Rs. {{ "%.2f"|format(total_fees) }}</h3>
+                <h6 class="text-uppercase text-muted small mb-1">Total Collection</h6>
+                <h3 class="mb-0 fw-bold text-success">Rs. {{ "%.2f"|format(total_collections_combined) }}</h3>
             </div>
         </div>
     </div>
-    <div class="col-12 col-sm-6 col-lg-6">
+    <div class="col-12 col-sm-6 col-lg-4">
         <div class="card bg-white text-dark shadow-sm border-0 h-100">
             <div class="card-body py-3">
                 <h6 class="text-uppercase text-muted small mb-1">Total Expenses</h6>
                 <h3 class="mb-0 fw-bold text-danger">Rs. {{ "%.2f"|format(total_expenses) }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-lg-4">
+        <div class="card bg-white text-dark shadow-sm border-0 h-100">
+            <div class="card-body py-3">
+                <h6 class="text-uppercase text-muted small mb-1">Cycle Donations</h6>
+                <h3 class="mb-0 fw-bold text-primary">Rs. {{ "%.2f"|format(monthly_donations) }}</h3>
             </div>
         </div>
     </div>
@@ -285,15 +293,15 @@
             </div>
         </div>
     </div>
-    <div class="col-12 col-sm-6 col-lg-4">
+    <div class="col-12 col-sm-6 col-lg-3">
         <div class="card bg-white text-dark shadow-sm border-0 h-100">
             <div class="card-body py-3">
                 <h6 class="text-uppercase text-muted small mb-1">Total Collection</h6>
-                <h3 class="mb-0 fw-bold text-success">Rs. {{ "%.2f"|format(total_fees) }}</h3>
+                <h3 class="mb-0 fw-bold text-success">Rs. {{ "%.2f"|format(total_collections_combined) }}</h3>
             </div>
         </div>
     </div>
-    <div class="col-12 col-sm-6 col-lg-4">
+    <div class="col-12 col-sm-6 col-lg-3">
         <div class="card bg-white text-dark shadow-sm border-0 h-100">
             <div class="card-body py-3">
                 <h6 class="text-uppercase text-muted small mb-1">Total Expenses Logged</h6>
@@ -301,7 +309,15 @@
             </div>
         </div>
     </div>
-    <div class="col-12 col-sm-6 col-lg-4">
+    <div class="col-12 col-sm-6 col-lg-3">
+        <div class="card bg-white text-dark shadow-sm border-0 h-100">
+            <div class="card-body py-3">
+                <h6 class="text-uppercase text-muted small mb-1">Cycle Donations</h6>
+                <h3 class="mb-0 fw-bold text-primary">Rs. {{ "%.2f"|format(monthly_donations) }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-lg-3">
         <div class="card bg-white text-dark shadow-sm border-0 h-100">
             <div class="card-body py-3">
                 <h6 class="text-uppercase text-muted small mb-1">Net Balance</h6>
