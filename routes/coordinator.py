@@ -237,8 +237,11 @@ def fees():
     if start_m > current_m:
         current_m = start_m
         
+    # Extend up to 12 months in advance
+    end_m = current_m + relativedelta(months=12)
+        
     temp_m = start_m
-    while temp_m <= current_m:
+    while temp_m <= end_m:
         available_months.append({
             'value': temp_m.strftime('%Y-%m'),
             'label': temp_m.strftime('%B %Y')
